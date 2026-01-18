@@ -280,7 +280,7 @@ async def calculate_transfer(provider: str, amount: float):
 
 # ============== TRANSFER ROUTES ==============
 
-@api_router.post("/transfers", response_model=TransferResponse)
+@api_router.post("/transfers", response_model=TransferResponse, status_code=status.HTTP_201_CREATED)
 async def create_transfer(transfer: TransferCreate, user: dict = Depends(get_current_user)):
     if transfer.provider not in PROVIDERS:
         raise HTTPException(status_code=400, detail="Invalid provider")
