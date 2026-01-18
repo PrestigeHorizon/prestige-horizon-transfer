@@ -1,0 +1,63 @@
+{
+  "total_tests": 11,
+  "passed_tests": 10,
+  "success_rate": 90.9090909090909,
+  "test_results": [
+    {
+      "test": "Health Check",
+      "success": true,
+      "details": ""
+    },
+    {
+      "test": "Root Endpoint",
+      "success": true,
+      "details": ""
+    },
+    {
+      "test": "Create Admin User",
+      "success": true,
+      "details": ""
+    },
+    {
+      "test": "User Registration",
+      "success": true,
+      "details": ""
+    },
+    {
+      "test": "Get Current User",
+      "success": true,
+      "details": ""
+    },
+    {
+      "test": "Get Providers",
+      "success": true,
+      "details": ""
+    },
+    {
+      "test": "Calculate Transfer Fee",
+      "success": true,
+      "details": ""
+    },
+    {
+      "test": "Create Transfer",
+      "success": false,
+      "details": "Expected 201, got 200 - {\"id\":\"564d758b-c6f5-448b-9bfc-e5ccc9cc0ff8\",\"user_id\":\"0a804fbf-18c0-4c28-8f79-0b22fbdc1e6b\",\"provider\":\"western_union\",\"amount\":50000.0,\"currency\":\"XOF\",\"fee\":1750.0,\"total_amount\":51750.0,\"receiver"
+    },
+    {
+      "test": "Admin Login",
+      "success": true,
+      "details": ""
+    },
+    {
+      "test": "Get Admin Stats",
+      "success": true,
+      "details": ""
+    },
+    {
+      "test": "Get All Transfers (Admin)",
+      "success": true,
+      "details": ""
+    }
+  ],
+  "created_transfer_id": null
+}
