@@ -10,8 +10,9 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Menu, X, User, LogOut, LayoutDashboard, History, PlusCircle, Settings } from 'lucide-react';
 import { useState } from 'react';
+import logoImg from '../images/white_logo_Prestige_horizon_bg.png';
 
-const LOGO_URL = "https://customer-assets.prestigeagent.com/job_transfer-fusion/artifacts/p7v9ekm9_1.png";
+const LOGO_URL = logoImg;
 
 export const Navbar = () => {
   const { user, logout } = useAuth();
@@ -28,13 +29,13 @@ export const Navbar = () => {
 
   const navLinks = user?.is_admin
     ? [
-        { path: '/admin', label: 'Dashboard', icon: LayoutDashboard },
-      ]
+      { path: '/admin', label: 'Dashboard', icon: LayoutDashboard },
+    ]
     : [
-        { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-        { path: '/new-transfer', label: 'New Transfer', icon: PlusCircle },
-        { path: '/transfers', label: 'History', icon: History },
-      ];
+      { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+      { path: '/new-transfer', label: 'New Transfer', icon: PlusCircle },
+      { path: '/transfers', label: 'History', icon: History },
+    ];
 
   return (
     <nav className="navbar" data-testid="navbar">
@@ -42,7 +43,12 @@ export const Navbar = () => {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link to={user ? (user.is_admin ? '/admin' : '/dashboard') : '/'} className="flex items-center gap-3" data-testid="nav-logo">
-            <img src={LOGO_URL} alt="Prestige Horizon" className="h-10 w-auto" />
+            <img
+              src={LOGO_URL}
+              alt="Prestige Horizon"
+              className="relative z-10 w-20 h-20 object-contain animate-fade-in"
+              data-testid="hero-logo"
+            />
           </Link>
 
           {/* Desktop Navigation */}
@@ -52,11 +58,10 @@ export const Navbar = () => {
                 key={link.path}
                 to={link.path}
                 data-testid={`nav-link-${link.label.toLowerCase().replace(' ', '-')}`}
-                className={`flex items-center gap-2 px-3 py-2 text-sm font-medium transition-colors duration-200 ${
-                  isActive(link.path)
+                className={`flex items-center gap-2 px-3 py-2 text-sm font-medium transition-colors duration-200 ${isActive(link.path)
                     ? 'text-[#D4AF37]'
                     : 'text-[#A1A1AA] hover:text-white'
-                }`}
+                  }`}
               >
                 <link.icon className="w-4 h-4" />
                 {link.label}
@@ -153,9 +158,8 @@ export const Navbar = () => {
                     key={link.path}
                     to={link.path}
                     onClick={() => setMobileMenuOpen(false)}
-                    className={`flex items-center gap-3 px-3 py-3 ${
-                      isActive(link.path) ? 'text-[#D4AF37]' : 'text-white'
-                    }`}
+                    className={`flex items-center gap-3 px-3 py-3 ${isActive(link.path) ? 'text-[#D4AF37]' : 'text-white'
+                      }`}
                   >
                     <link.icon className="w-5 h-5" />
                     {link.label}

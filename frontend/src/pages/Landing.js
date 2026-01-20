@@ -2,15 +2,16 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Navbar } from '@/components/Navbar';
 import { ArrowRight, Send, Shield, Globe, Clock, Smartphone, Building2 } from 'lucide-react';
+import logoImg from '../images/white_logo_Prestige_horizon_bg.png';
 
-const LOGO_URL = "https://customer-assets.prestigeagent.com/job_transfer-fusion/artifacts/p7v9ekm9_1.png";
+const LOGO_URL = logoImg;
 
 const providers = [
   { name: 'Western Union', color: '#FFDA00' },
   { name: 'MoneyGram', color: '#E51B24' },
   { name: 'Ria', color: '#F37021' },
   { name: 'MTN Mobile Money', color: '#FFCC00' },
-  { name: 'Moov Money', color: '#0068A5' },
+  { name: 'Moov Mobile Money', color: '#0068A5' },
 ];
 
 const features = [
@@ -101,7 +102,7 @@ const Landing = () => {
                 <img
                   src={LOGO_URL}
                   alt="Prestige Horizon"
-                  className="relative z-10 w-80 h-80 object-contain animate-fade-in"
+                  className="relative z-10 w-750 h-750 object-contain animate-fade-in"
                   data-testid="hero-logo"
                 />
               </div>
@@ -114,7 +115,7 @@ const Landing = () => {
       <section className="py-16 bg-[#0A0A0A] border-y border-white/5">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <p className="text-center text-[#A1A1AA] text-sm uppercase tracking-widest mb-8">
-            Trusted Partners
+            Our Trusted Partners
           </p>
           <div className="flex flex-wrap justify-center items-center gap-8 md:gap-16">
             {providers.map((provider) => (
@@ -140,7 +141,7 @@ const Landing = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
-              Why Choose <span className="text-[#D4AF37]">Prestige Horizon</span>
+              Why Choose <span className="text-[#D4AF37]">Prestige Horizon Inc.</span>
             </h2>
             <p className="text-[#A1A1AA] text-lg max-w-2xl mx-auto">
               We combine multiple transfer services into one seamless experience
@@ -194,10 +195,15 @@ const Landing = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="flex items-center gap-3">
-              <img src={LOGO_URL} alt="Prestige Horizon" className="h-12" />
+              <img
+                src={LOGO_URL}
+                alt="Prestige Horizon"
+                className="w-40 md:w-48 h-auto object-contain"
+              />
             </div>
-            <div className="text-[#A1A1AA] text-sm">
-              © {new Date().getFullYear()} Prestige Horizon Inc. All rights reserved.
+            <div className="flex flex-col space-y-1 text-[#A1A1AA] text-sm">
+              <p>© {new Date().getFullYear()} Prestige Horizon Inc. and its subsidiaries. All rights reserved.</p>
+              <p>© {new Date().getFullYear()} Prestige Horizon Inc. et ses filiales. Tous droits réservés.</p>
             </div>
           </div>
         </div>

@@ -14,7 +14,9 @@ import {
 import { toast } from 'sonner';
 import { Eye, EyeOff, Mail, Lock, User, Phone, Globe, ArrowLeft } from 'lucide-react';
 
-const LOGO_URL = "https://customer-assets.prestigeagent.com/job_transfer-fusion/artifacts/p7v9ekm9_1.png";
+import logoImg from '../images/white_logo_Prestige_horizon_bg.png';
+
+const LOGO_URL = logoImg;
 
 const countries = [
   'Burkina Faso',
@@ -47,7 +49,7 @@ const Register = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (formData.password.length < 6) {
       toast.error('Password must be at least 6 characters');
       return;
@@ -73,9 +75,14 @@ const Register = () => {
       <div className="hidden lg:flex w-1/2 bg-[#0A0A0A] items-center justify-center relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-[#D4AF37]/10 to-transparent"></div>
         <div className="relative z-10 text-center p-12">
-          <div className="w-48 h-48 mx-auto mb-8 relative">
+          <div className="w-300 h-300 mx-auto mb-8 relative">
             <div className="absolute inset-0 bg-[#D4AF37]/20 blur-3xl rounded-full"></div>
-            <img src={LOGO_URL} alt="" className="relative z-10 w-full h-full object-contain" />
+            <img
+              src={LOGO_URL}
+              alt="Prestige Horizon"
+              className="relative z-10 w-230 h-230 object-contain animate-fade-in"
+              data-testid="hero-logo"
+            />
           </div>
           <h2 className="text-2xl font-bold text-white mb-4">Join Our Network</h2>
           <p className="text-[#A1A1AA] max-w-sm mx-auto">
@@ -162,7 +169,7 @@ const Register = () => {
                   value={formData.country}
                   onValueChange={(value) => setFormData({ ...formData, country: value })}
                 >
-                  <SelectTrigger 
+                  <SelectTrigger
                     className="pl-10 bg-[#1A1A1A] border-white/10 focus:border-[#D4AF37] text-white"
                     data-testid="register-country"
                   >

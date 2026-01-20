@@ -6,12 +6,17 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { Eye, EyeOff, Mail, Lock, ArrowLeft } from 'lucide-react';
+import logoImg from '../images/white_logo_Prestige_horizon_bg.png';
+import logoImg2 from '../images/white_logo_Prestige_horizon_bg.png';
 
-const LOGO_URL = "https://customer-assets.prestigeagent.com/job_transfer-fusion/artifacts/p7v9ekm9_1.png";
+
+const LOGO_URL = logoImg;
+const LOGO_URL2 = logoImg2;
 
 const Login = () => {
   const { login } = useAuth();
   const navigate = useNavigate();
+
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
@@ -50,14 +55,25 @@ const Login = () => {
 
         <div className="max-w-md w-full mx-auto lg:mx-0">
           <div className="mb-10">
-            <img src={LOGO_URL} alt="Prestige Horizon" className="h-16 mb-8" />
-            <h1 className="text-3xl font-bold text-white mb-2">Welcome Back</h1>
-            <p className="text-[#A1A1AA]">Sign in to your account to continue</p>
+            <img
+              src={LOGO_URL}
+              alt="Prestige Horizon"
+              className="w-50 md:w-58 h-auto object-contain"
+            />
+            <h1 className="text-3xl font-bold text-white mb-2">
+              Welcome Back
+            </h1>
+            <p className="text-[#A1A1AA]">
+              Sign in to your account to continue
+            </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Email */}
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-[#A1A1AA]">Email Address</Label>
+              <Label htmlFor="email" className="text-[#A1A1AA]">
+                Email Address
+              </Label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#A1A1AA]" />
                 <Input
@@ -65,7 +81,9 @@ const Login = () => {
                   type="email"
                   placeholder="your@email.com"
                   value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, email: e.target.value })
+                  }
                   className="pl-10 bg-[#1A1A1A] border-white/10 focus:border-[#D4AF37] text-white placeholder:text-white/30"
                   required
                   data-testid="login-email"
@@ -73,8 +91,11 @@ const Login = () => {
               </div>
             </div>
 
+            {/* Password */}
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-[#A1A1AA]">Password</Label>
+              <Label htmlFor="password" className="text-[#A1A1AA]">
+                Password
+              </Label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#A1A1AA]" />
                 <Input
@@ -82,7 +103,9 @@ const Login = () => {
                   type={showPassword ? 'text' : 'password'}
                   placeholder="••••••••"
                   value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, password: e.target.value })
+                  }
                   className="pl-10 pr-10 bg-[#1A1A1A] border-white/10 focus:border-[#D4AF37] text-white placeholder:text-white/30"
                   required
                   data-testid="login-password"
@@ -92,7 +115,11 @@ const Login = () => {
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-[#A1A1AA] hover:text-white"
                 >
-                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  {showPassword ? (
+                    <EyeOff className="w-5 h-5" />
+                  ) : (
+                    <Eye className="w-5 h-5" />
+                  )}
                 </button>
               </div>
             </div>
@@ -109,7 +136,11 @@ const Login = () => {
 
           <p className="mt-8 text-center text-[#A1A1AA]">
             Don't have an account?{' '}
-            <Link to="/register" className="text-[#D4AF37] hover:underline" data-testid="login-register-link">
+            <Link
+              to="/register"
+              className="text-[#D4AF37] hover:underline"
+              data-testid="login-register-link"
+            >
               Create Account
             </Link>
           </p>
@@ -119,12 +150,20 @@ const Login = () => {
       {/* Right Side - Decorative */}
       <div className="hidden lg:flex w-1/2 bg-[#0A0A0A] items-center justify-center relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-[#D4AF37]/10 to-transparent"></div>
+
         <div className="relative z-10 text-center p-12">
-          <div className="w-48 h-48 mx-auto mb-8 relative">
+          <div className="w-700 h-700 mx-auto mb-8 relative flex items-center justify-center">
             <div className="absolute inset-0 bg-[#D4AF37]/20 blur-3xl rounded-full"></div>
-            <img src={LOGO_URL} alt="" className="relative z-10 w-full h-full object-contain" />
+            <img
+              src={LOGO_URL2}
+              alt=""
+              className="w-[600px] h-600"
+            />
           </div>
-          <h2 className="text-2xl font-bold text-white mb-4">Secure Transfers</h2>
+
+          <h2 className="text-2xl font-bold text-white mb-4">
+            Secure Transfers
+          </h2>
           <p className="text-[#A1A1AA] max-w-sm mx-auto">
             Your money is protected with industry-leading security measures
           </p>
