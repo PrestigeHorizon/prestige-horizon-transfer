@@ -8,17 +8,17 @@ import moneyGramLogo from '../images/providers/moneygram.jpg';
 import riaLogo from '../images/providers/ria.jpg';
 import mtnLogo from '../images/providers/mtn-momo.png';
 import moovLogo from '../images/providers/moov-money.png';
-import corisLogo from '../images/providers/coris-money.jpg';
+import corisLogo from '../images/providers/kori-money.png';
 
 const LOGO_URL = logoImg;
 
 const providers = [
-  { name: 'Western Union', logo: westernUnionLogo },
-  { name: 'MoneyGram', logo: moneyGramLogo },
-  { name: 'Ria', logo: riaLogo },
-  { name: 'MTN Mobile Money', logo: mtnLogo },
-  { name: 'Moov Mobile Money', logo: moovLogo },
-  { name: 'Coris Money', logo: corisLogo },
+  { name: 'Western Union', logo: westernUnionLogo , color: '#caad05'},
+  { name: 'MoneyGram', logo: moneyGramLogo, color: '#E51B24' },
+  { name: 'Ria', logo: riaLogo, color: '#F37021' },
+  { name: 'MTN Mobile Money', logo: mtnLogo, color: '#FFCC00' },
+  { name: 'Moov Mobile Money', logo: moovLogo, color: '#00a51b' },
+  { name: 'Coris Money', logo: corisLogo, color: '#0068A5' },
 ];
 
 const features = [
@@ -130,6 +130,7 @@ const Landing = () => {
               <div
                 key={provider.name}
                 className="flex items-center gap-4 opacity-70 hover:opacity-100 transition-opacity"
+                style={{ color: provider.color }}
                 data-testid={`provider-${provider.name.toLowerCase().replace(/\s+/g, '-')}`}
               >
                 <img
@@ -137,7 +138,7 @@ const Landing = () => {
                   alt={provider.name}
                   className="h-8 w-auto object-contain grayscale hover:grayscale-0 transition"
                 />
-                <span className="text-lg font-semibold text-white">
+                <span className="text-lg font-semibold">
                   {provider.name}
                 </span>
               </div>
