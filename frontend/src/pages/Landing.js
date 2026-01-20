@@ -3,15 +3,22 @@ import { Button } from '@/components/ui/button';
 import { Navbar } from '@/components/Navbar';
 import { ArrowRight, Send, Shield, Globe, Clock, Smartphone, Building2 } from 'lucide-react';
 import logoImg from '../images/white_logo_Prestige_horizon_bg.png';
+import westernUnionLogo from '../images/providers/western-union.png';
+import moneyGramLogo from '../images/providers/moneygram.jpg';
+import riaLogo from '../images/providers/ria.jpg';
+import mtnLogo from '../images/providers/mtn-momo.png';
+import moovLogo from '../images/providers/moov-money.png';
+import corisLogo from '../images/providers/coris-money.jpg';
 
 const LOGO_URL = logoImg;
 
 const providers = [
-  { name: 'Western Union', color: '#FFDA00' },
-  { name: 'MoneyGram', color: '#E51B24' },
-  { name: 'Ria', color: '#F37021' },
-  { name: 'MTN Mobile Money', color: '#FFCC00' },
-  { name: 'Moov Mobile Money', color: '#0068A5' },
+  { name: 'Western Union', logo: westernUnionLogo },
+  { name: 'MoneyGram', logo: moneyGramLogo },
+  { name: 'Ria', logo: riaLogo },
+  { name: 'MTN Mobile Money', logo: mtnLogo },
+  { name: 'Moov Mobile Money', logo: moovLogo },
+  { name: 'Coris Money', logo: corisLogo },
 ];
 
 const features = [
@@ -117,19 +124,22 @@ const Landing = () => {
           <p className="text-center text-[#A1A1AA] text-sm uppercase tracking-widest mb-8">
             Our Trusted Partners
           </p>
-          <div className="flex flex-wrap justify-center items-center gap-8 md:gap-16">
+
+          <div className="flex flex-wrap justify-center items-center gap-10 md:gap-16">
             {providers.map((provider) => (
               <div
                 key={provider.name}
-                className="flex items-center gap-2 text-lg font-semibold opacity-70 hover:opacity-100 transition-opacity"
-                style={{ color: provider.color }}
-                data-testid={`provider-${provider.name.toLowerCase().replace(' ', '-')}`}
+                className="flex items-center gap-4 opacity-70 hover:opacity-100 transition-opacity"
+                data-testid={`provider-${provider.name.toLowerCase().replace(/\s+/g, '-')}`}
               >
-                <div
-                  className="w-3 h-3 rounded-full"
-                  style={{ backgroundColor: provider.color }}
-                ></div>
-                {provider.name}
+                <img
+                  src={provider.logo}
+                  alt={provider.name}
+                  className="h-8 w-auto object-contain grayscale hover:grayscale-0 transition"
+                />
+                <span className="text-lg font-semibold text-white">
+                  {provider.name}
+                </span>
               </div>
             ))}
           </div>
