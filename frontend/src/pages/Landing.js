@@ -121,7 +121,7 @@ const Landing = () => {
       {/* Providers Section */}
       <section className="py-16 bg-[#0A0A0A] border-y border-white/5">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <p className="text-center text-[#A1A1AA] text-sm uppercase tracking-widest mb-8">
+          <p className="text-center text-bold text-[#A1A1AA] text-sm uppercase tracking-widest mb-8">
             Our Trusted Partners
           </p>
 

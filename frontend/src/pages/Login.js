@@ -7,12 +7,10 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { Eye, EyeOff, Mail, Lock, ArrowLeft } from 'lucide-react';
 import logoImg from '../images/white_logo_Prestige_horizon_bg.png';
-import logoImg2 from '../images/phinc-office.png';
-import officeBg from './office.png';
+import officeBg from '../images/phinc-office.png';
 
 
 const LOGO_URL = logoImg;
-const LOGO_URL2 = logoImg2;
 
 const Login = () => {
   const { login } = useAuth();
