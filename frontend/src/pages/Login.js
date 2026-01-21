@@ -7,7 +7,8 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { Eye, EyeOff, Mail, Lock, ArrowLeft } from 'lucide-react';
 import logoImg from '../images/white_logo_Prestige_horizon_bg.png';
-import logoImg2 from '../images/Affiche_PHInc.png';
+import logoImg2 from '../images/phinc-office.png';
+import officeBg from './office.png';
 
 
 const LOGO_URL = logoImg;
@@ -148,27 +149,32 @@ const Login = () => {
       </div>
 
       {/* Right Side - Decorative */}
-      <div className="hidden lg:flex w-1/2 bg-[#0A0A0A] items-center justify-center relative overflow-hidden">
+      <div
+        className="hidden lg:flex w-1/2 items-center justify-center relative overflow-hidden bg-[#0A0A0A]"
+        style={{
+          backgroundImage: `url(${officeBg})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat',
+        }}
+      >
+
+        <div className="absolute inset-0 bg-black/65"></div>
+
         <div className="absolute inset-0 bg-gradient-to-br from-[#D4AF37]/10 to-transparent"></div>
 
         <div className="relative z-10 text-center p-12">
-          <div className="w-700 h-full mx-auto mb-8 relative flex items-center justify-center">
-            <div className="absolute inset-0 bg-[#D4AF37]/20 blur-3xl rounded-full"></div>
-            <img
-              src={LOGO_URL2}
-              alt=""
-              className="w-[600px] h-700"
-            />
-          </div>
-
-          <h2 className="text-2xl font-bold text-white mb-4">
+          <h2 className="text-6xl font-bold text-[#D4AF37] mb-4 drop-shadow-[0_0_8px_rgba(212,175,55,0.35)]">
             Secure Transfers
           </h2>
-          <p className="text-[#A1A1AA] max-w-sm mx-auto">
-            Your money is protected with industry-leading security measures
+          <p className="text-2xl text-[#D4AF37]/75 max-w-sm mx-auto">
+            Your money is protected with industry-leading security measures.
           </p>
         </div>
+
       </div>
+
+
     </div>
   );
 };
