@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { Eye, EyeOff, Mail, Lock, ArrowLeft } from 'lucide-react';
 import logoImg from '../images/white_logo_Prestige_horizon_bg.png';
-import logoImg2 from '../images/white_logo_Prestige_horizon_bg.png';
+import logoImg2 from '../images/Affiche_PHInc.png';
 
 
 const LOGO_URL = logoImg;
@@ -152,12 +152,12 @@ const Login = () => {
         <div className="absolute inset-0 bg-gradient-to-br from-[#D4AF37]/10 to-transparent"></div>
 
         <div className="relative z-10 text-center p-12">
-          <div className="w-700 h-700 mx-auto mb-8 relative flex items-center justify-center">
+          <div className="w-700 h-full mx-auto mb-8 relative flex items-center justify-center">
             <div className="absolute inset-0 bg-[#D4AF37]/20 blur-3xl rounded-full"></div>
             <img
               src={LOGO_URL2}
               alt=""
-              className="w-[600px] h-600"
+              className="w-[600px] h-700"
             />
           </div>
 

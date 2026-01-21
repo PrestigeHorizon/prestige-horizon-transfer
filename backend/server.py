@@ -156,11 +156,19 @@ PROVIDERS = {
 # ============== HELPERS ==============
 
 def hash_password(password: str) -> str:
-    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+    # Ensure password is encoded to bytes before hashing
+    pwd_bytes = password.encode('utf-8')
+    salt = bcrypt.gensalt()
+    return bcrypt.hashpw(pwd_bytes, salt).decode('utf-8')
 
 def verify_password(password: str, hashed: str) -> bool:
-    return bcrypt.checkpw(password.encode(), hashed.encode())
-
+    try:
+        # We must ensure both are encoded to bytes for bcrypt to compare them
+        return bcrypt.checkpw(password.encode('utf-8'), hashed.encode('utf-8'))
+    except Exception as e:
+        print(f"Error during password verification: {e}")
+        return False
+    
 def create_token(user_id: str, is_admin: bool = False) -> str:
     expiration = datetime.now(timezone.utc) + timedelta(hours=JWT_EXPIRATION_HOURS)
     payload = {

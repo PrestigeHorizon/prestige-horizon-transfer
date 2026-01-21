@@ -109,7 +109,7 @@ const Landing = () => {
                 <img
                   src={LOGO_URL}
                   alt="Prestige Horizon"
-                  className="relative z-10 w-750 h-750 object-contain animate-fade-in"
+                  className="relative z-10 w-450 h-450 object-contain animate-fade-in"
                   data-testid="hero-logo"
                 />
               </div>

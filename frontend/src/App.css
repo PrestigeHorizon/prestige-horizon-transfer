@@ -21,7 +21,7 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background-image: url('https://images.unsplash.com/photo-1661332530594-cdebec770a38?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3MjQyMTd8MHwxfHNlYXJjaHwxfHxBZnJpY2FuJTIwYnVzaW5lc3MlMjBwcm9mZXNzaW9uYWxzJTIwaGFwcHklMjBsdXh1cnklMjBvZmZpY2V8ZW58MHx8fHwxNzY4NzQ2ODM1fDA&ixlib=rb-4.1.0&q=85');
+    background-image: url('./images/background.png');
     background-size: cover;
     background-position: center;
     opacity: 0.15;
