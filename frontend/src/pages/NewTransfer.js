@@ -27,14 +27,15 @@ import corisLogo from '../images/providers/kori-money.png';
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
 const providerColors = {
-  western_union: '#FFDA00',
+  western_union: '#caad05',
   moneygram: '#E51B24',
   ria: '#F37021',
   mtn: '#FFCC00',
-  moov: '#0068A5',
+  moov: '#00a51b',
+  Coris: '#0068A5',
 };
 
-// Map the keys to the exact strings your API returns (e.g., 'western_union')
+// Map the keys to the exact strings API returns (e.g., 'western_union')
 const providerMaps = {
   western_union: { name: 'Western Union', logo: westernUnionLogo, color: '#caad05' },
   moneygram: { name: 'MoneyGram', logo: moneyGramLogo, color: '#E51B24' },
@@ -43,6 +44,8 @@ const providerMaps = {
   moov: { name: 'Moov Mobile Money', logo: moovLogo, color: '#00a51b' },
   coris: { name: 'Coris Money', logo: corisLogo, color: '#0068A5' },
 };
+
+
 const countries = [
   'Burkina Faso',
   'Mali',
@@ -94,6 +97,7 @@ const NewTransfer = () => {
   const fetchProviders = async () => {
     try {
       const response = await axios.get(`${API_URL}/api/providers`);
+      console.log("Available Providers:", response.data);
       setProviders(response.data);
     } catch (error) {
       console.error('Failed to fetch providers:', error);
@@ -199,9 +203,15 @@ const NewTransfer = () => {
             <div className="space-y-8 animate-fade-in">
               <div>
                 <Label className="text-[#A1A1AA] mb-4 block">Select Provider</Label>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-5 gap-4">
                   {providers.map((provider) => {
-                    const details = getProviderDetails(provider.provider);
+                    // Use the helper to get logo/color, or fallback to defaults
+                    const details = providerMaps[provider.provider] || {
+                      name: provider.name,
+                      logo: null,
+                      color: '#D4AF37'
+                    };
+
                     const isSelected = formData.provider === provider.provider;
 
                     return (
@@ -210,22 +220,32 @@ const NewTransfer = () => {
                         type="button"
                         onClick={() => setFormData({ ...formData, provider: provider.provider })}
                         className={`provider-card p-4 rounded-xl border transition-all flex flex-col items-center text-center ${isSelected
-                            ? 'bg-white/5' // Slight highlight background
-                            : 'border-white/10 bg-[#0F0F0F] hover:border-white/20'
+                          ? 'bg-white/5'
+                          : 'border-white/10 bg-[transparent] hover:border-white/20'
                           }`}
                         style={{
-                          // Dynamic border color when selected
-                          borderColor: isSelected ? details.color : undefined,
-                          boxShadow: isSelected ? `${details.color}20 0px 0px 20px` : 'none'
+                          // Uses the brand color for the border when selected
+                          borderColor: isSelected ? details.color : 'transparent',
+                          boxShadow: isSelected ? `${details.color}15 0px 0px 15px` : 'none',
+                          backgroundColor: `${details.color}20`, color: details.colo
                         }}
                       >
                         <div
                           className="w-12 h-12 rounded-lg flex items-center justify-center mb-3 overflow-hidden bg-white p-1"
                         >
                           {details.logo ? (
-                            <img src={details.logo} alt={details.name} className="w-full h-full object-contain" />
+                            <img
+                              src={details.logo}
+                              alt={details.name}
+                              className="w-full h-full object-contain"
+                            />
                           ) : (
-                            <div className="w-4 h-4 rounded-full" style={{ backgroundColor: details.color }} />
+                            <div
+                              className="w-full h-full rounded flex items-center justify-center text-[10px] font-bold"
+                              style={{ backgroundColor: `${details.color}20`, color: details.color }}
+                            >
+                              {details.name.substring(0, 2).toUpperCase()}
+                            </div>
                           )}
                         </div>
                         <p className="text-white font-medium text-xs">{details.name}</p>
