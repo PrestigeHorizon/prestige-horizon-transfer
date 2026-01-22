@@ -6,24 +6,33 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { PlusCircle, ArrowUpRight, Clock, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
+import westernUnionLogo from '../images/providers/western-union.png';
+import moneyGramLogo from '../images/providers/moneygram.jpg';
+import riaLogo from '../images/providers/ria.jpg';
+import mtnLogo from '../images/providers/mtn-momo.png';
+import moovLogo from '../images/providers/moov-money.png';
+import corisLogo from '../images/providers/kori-money.png';
+
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
-
-const providerColors = {
-  western_union: '#FFDA00',
-  moneygram: '#E51B24',
-  ria: '#F37021',
-  mtn: '#FFCC00',
-  moov: '#0068A5',
-};
 
 const providerNames = {
   western_union: 'Western Union',
   moneygram: 'MoneyGram',
-  ria: 'Ria',
+  ria: 'Ria Transfer',
   mtn: 'MTN Mobile Money',
-  moov: 'Moov Money',
+  moov: 'Moov Mobile Money',
 };
+
+const providers = [
+  { name: 'Western Union', logo: westernUnionLogo, color: '#caad05' },
+  { name: 'MoneyGram', logo: moneyGramLogo, color: '#E51B24' },
+  { name: 'Ria', logo: riaLogo, color: '#F37021' },
+  { name: 'MTN Mobile Money', logo: mtnLogo, color: '#FFCC00' },
+  { name: 'Moov Mobile Money', logo: moovLogo, color: '#00a51b' },
+  { name: 'Coris Money', logo: corisLogo, color: '#0068A5' },
+];
+
 
 const statusIcons = {
   pending: Clock,
@@ -137,30 +146,21 @@ const Dashboard = () => {
         </div>
 
         {/* Quick Actions */}
-        <div className="grid md:grid-cols-5 gap-4 mb-10">
-          {Object.entries(providerNames).map(([key, name]) => (
-            <Link key={key} to={`/new-transfer?provider=${key}`}>
-              <Card
-                className="bg-[#0F0F0F] border-white/10 hover:border-opacity-50 transition-all cursor-pointer hover:-translate-y-1"
-                style={{ '--provider-color': providerColors[key] }}
-                data-testid={`quick-${key}`}
-              >
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4 mb-10">
+          {providers.map((provider, index) => (
+            <Link key={index} to={`/new-transfer?provider=${provider.name.toLowerCase().replace(' ', '_')}`}>
+              <Card className="bg-[#0F0F0F] border-white/10 hover:border-opacity-50 transition-all cursor-pointer hover:-translate-y-1">
                 <CardContent className="p-4 flex items-center gap-3">
-                  <div
-                    className="w-10 h-10 rounded-lg flex items-center justify-center"
-                    style={{ backgroundColor: `${providerColors[key]}20` }}
-                  >
-                    <div
-                      className="w-4 h-4 rounded-full"
-                      style={{ backgroundColor: providerColors[key] }}
-                    ></div>
+                  <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-white/5">
+                    <img src={provider.logo} alt={provider.name} className="h-6 w-auto object-contain" />
                   </div>
-                  <span className="text-white text-sm font-medium">{name.split(' ')[0]}</span>
+                  <span className="text-white text-sm font-medium">{provider.name.split(' ')[0]}</span>
                 </CardContent>
               </Card>
             </Link>
           ))}
         </div>
+
 
         {/* Recent Transfers */}
         <Card className="bg-[#0F0F0F] border-white/10" data-testid="recent-transfers">
@@ -200,14 +200,15 @@ const Dashboard = () => {
                     >
                       <div className="flex items-center gap-4">
                         <div
-                          className="w-10 h-10 rounded-lg flex items-center justify-center"
-                          style={{ backgroundColor: `${providerColors[transfer.provider]}20` }}
+                          className="w-10 h-10 rounded-lg flex items-center justify-center bg-white/5"
                         >
-                          <div
-                            className="w-4 h-4 rounded-full"
-                            style={{ backgroundColor: providerColors[transfer.provider] }}
-                          ></div>
+                          <img
+                            src={providers.find(p => p.name.toLowerCase().includes(transfer.provider.replace('_', '')))?.logo}
+                            alt={providerNames[transfer.provider]}
+                            className="h-6 w-auto object-contain transition-transform duration-200 hover:scale-110"
+                          />
                         </div>
+
                         <div>
                           <p className="text-white font-medium">{transfer.receiver_name}</p>
                           <p className="text-[#A1A1AA] text-sm">
