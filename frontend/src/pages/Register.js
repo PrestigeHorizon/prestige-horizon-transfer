@@ -43,7 +43,7 @@ const Register = () => {
     full_name: '',
     email: '',
     phone: '',
-    country: 'Burkina Faso',
+    country: 'Benin',
     password: '',
   });
 
@@ -84,8 +84,15 @@ const Register = () => {
               data-testid="hero-logo"
             />
           </div>
-          <h2 className="text-2xl font-bold text-white mb-4">Join Our Network</h2>
-          <p className="text-[#A1A1AA] max-w-sm mx-auto">
+          <h2
+            className="text-2xl font-bold mb-4"
+            style={{ color: 'rgb(212 175 55 / var(--tw-text-opacity, 1))' }}
+          >
+            Join Our Network
+          </h2>
+          <p className="text-[#A1A1AA] max-w-sm mx-auto"
+            style={{ color: 'rgb(212 175 55 / var(--tw-text-opacity, 1))' }}
+          >
             Send money globally with Western Union, MoneyGram, Ria, MTN and Moov
           </p>
         </div>
@@ -117,7 +124,7 @@ const Register = () => {
                 <Input
                   id="full_name"
                   type="text"
-                  placeholder="John Doe"
+                  placeholder="Prestige Horizon Inc"
                   value={formData.full_name}
                   onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
                   className="pl-10 bg-[#1A1A1A] border-white/10 focus:border-[#D4AF37] text-white placeholder:text-white/30"
@@ -151,7 +158,7 @@ const Register = () => {
                 <Input
                   id="phone"
                   type="tel"
-                  placeholder="+226 70 00 00 00"
+                  placeholder="+229 01 00 00 00 00"
                   value={formData.phone}
                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                   className="pl-10 bg-[#1A1A1A] border-white/10 focus:border-[#D4AF37] text-white placeholder:text-white/30"
