@@ -17,6 +17,13 @@ import {
 import { toast } from 'sonner';
 import { ArrowRight, Check, Loader2 } from 'lucide-react';
 
+import westernUnionLogo from '../images/providers/western-union.png';
+import moneyGramLogo from '../images/providers/moneygram.jpg';
+import riaLogo from '../images/providers/ria.jpg';
+import mtnLogo from '../images/providers/mtn-momo.png';
+import moovLogo from '../images/providers/moov-money.png';
+import corisLogo from '../images/providers/kori-money.png';
+
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
 const providerColors = {
@@ -27,6 +34,15 @@ const providerColors = {
   moov: '#0068A5',
 };
 
+// Map the keys to the exact strings your API returns (e.g., 'western_union')
+const providerMaps = {
+  western_union: { name: 'Western Union', logo: westernUnionLogo, color: '#caad05' },
+  moneygram: { name: 'MoneyGram', logo: moneyGramLogo, color: '#E51B24' },
+  ria: { name: 'Ria', logo: riaLogo, color: '#F37021' },
+  mtn: { name: 'MTN Mobile Money', logo: mtnLogo, color: '#FFCC00' },
+  moov: { name: 'Moov Mobile Money', logo: moovLogo, color: '#00a51b' },
+  coris: { name: 'Coris Money', logo: corisLogo, color: '#0068A5' },
+};
 const countries = [
   'Burkina Faso',
   'Mali',
@@ -127,7 +143,21 @@ const NewTransfer = () => {
     }).format(amount);
   };
 
+  const getProviderDetails = (providerKey) => {
+    // 1. Check local asset map
+    if (providerMaps[providerKey]) return providerMaps[providerKey];
+
+    // 2. Fallback to the simpler color object if available
+    return {
+      name: providerKey.replace('_', ' '),
+      logo: null,
+      color: providerColors[providerKey] || '#D4AF37'
+    };
+  };
+
   const selectedProvider = providers.find((p) => p.provider === formData.provider);
+
+  const brandDetails = getProviderDetails(formData.provider);
 
   const canProceedStep1 = formData.provider && formData.amount && parseFloat(formData.amount) > 0;
   const canProceedStep2 = formData.receiver_name && formData.receiver_phone && formData.receiver_country;
@@ -148,11 +178,10 @@ const NewTransfer = () => {
           {[1, 2, 3].map((s) => (
             <div key={s} className="flex items-center gap-2">
               <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center font-semibold text-sm transition-colors ${
-                  step >= s
-                    ? 'bg-[#D4AF37] text-black'
-                    : 'bg-[#1A1A1A] text-[#A1A1AA]'
-                }`}
+                className={`w-8 h-8 rounded-full flex items-center justify-center font-semibold text-sm transition-colors ${step >= s
+                  ? 'bg-[#D4AF37] text-black'
+                  : 'bg-[#1A1A1A] text-[#A1A1AA]'
+                  }`}
                 data-testid={`step-indicator-${s}`}
               >
                 {step > s ? <Check className="w-4 h-4" /> : s}
@@ -165,39 +194,45 @@ const NewTransfer = () => {
         </div>
 
         <form onSubmit={handleSubmit}>
-          {/* Step 1: Provider & Amount */}
+          {/* Step 1: Updated Provider Selection */}
           {step === 1 && (
-            <div className="space-y-8 animate-fade-in" data-testid="step-1">
-              {/* Provider Selection */}
+            <div className="space-y-8 animate-fade-in">
               <div>
                 <Label className="text-[#A1A1AA] mb-4 block">Select Provider</Label>
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                  {providers.map((provider) => (
-                    <button
-                      key={provider.provider}
-                      type="button"
-                      onClick={() => setFormData({ ...formData, provider: provider.provider })}
-                      className={`provider-card p-4 rounded-xl border transition-all ${
-                        formData.provider === provider.provider
-                          ? 'border-[#D4AF37] bg-[#D4AF37]/5'
-                          : 'border-white/10 bg-[#0F0F0F] hover:border-white/20'
-                      }`}
-                      style={{ '--provider-color': provider.color }}
-                      data-testid={`provider-select-${provider.provider}`}
-                    >
-                      <div
-                        className="w-10 h-10 rounded-lg flex items-center justify-center mb-3"
-                        style={{ backgroundColor: `${provider.color}20` }}
+                  {providers.map((provider) => {
+                    const details = getProviderDetails(provider.provider);
+                    const isSelected = formData.provider === provider.provider;
+
+                    return (
+                      <button
+                        key={provider.provider}
+                        type="button"
+                        onClick={() => setFormData({ ...formData, provider: provider.provider })}
+                        className={`provider-card p-4 rounded-xl border transition-all flex flex-col items-center text-center ${isSelected
+                            ? 'bg-white/5' // Slight highlight background
+                            : 'border-white/10 bg-[#0F0F0F] hover:border-white/20'
+                          }`}
+                        style={{
+                          // Dynamic border color when selected
+                          borderColor: isSelected ? details.color : undefined,
+                          boxShadow: isSelected ? `${details.color}20 0px 0px 20px` : 'none'
+                        }}
                       >
                         <div
-                          className="w-4 h-4 rounded-full"
-                          style={{ backgroundColor: provider.color }}
-                        ></div>
-                      </div>
-                      <p className="text-white font-medium text-sm">{provider.name}</p>
-                      <p className="text-[#A1A1AA] text-xs mt-1">{provider.estimated_time}</p>
-                    </button>
-                  ))}
+                          className="w-12 h-12 rounded-lg flex items-center justify-center mb-3 overflow-hidden bg-white p-1"
+                        >
+                          {details.logo ? (
+                            <img src={details.logo} alt={details.name} className="w-full h-full object-contain" />
+                          ) : (
+                            <div className="w-4 h-4 rounded-full" style={{ backgroundColor: details.color }} />
+                          )}
+                        </div>
+                        <p className="text-white font-medium text-xs">{details.name}</p>
+                        <p className="text-[#A1A1AA] text-[10px] mt-1">{provider.estimated_time}</p>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -303,7 +338,7 @@ const NewTransfer = () => {
                       value={formData.receiver_country}
                       onValueChange={(value) => setFormData({ ...formData, receiver_country: value })}
                     >
-                      <SelectTrigger 
+                      <SelectTrigger
                         className="mt-2 bg-[#1A1A1A] border-white/10 focus:border-[#D4AF37] text-white"
                         data-testid="receiver-country"
                       >
@@ -360,25 +395,25 @@ const NewTransfer = () => {
 
           {/* Step 3: Review & Confirm */}
           {step === 3 && (
-            <div className="space-y-6 animate-fade-in" data-testid="step-3">
+            <div className="space-y-6 animate-fade-in">
               <Card className="bg-[#0F0F0F] border-white/10">
                 <CardHeader>
                   <CardTitle className="text-white">Review Transfer</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                  {/* Provider */}
                   <div className="flex items-center gap-4 p-4 rounded-lg bg-[#1A1A1A]">
-                    <div
-                      className="w-12 h-12 rounded-lg flex items-center justify-center"
-                      style={{ backgroundColor: `${providerColors[formData.provider]}20` }}
-                    >
-                      <div
-                        className="w-5 h-5 rounded-full"
-                        style={{ backgroundColor: providerColors[formData.provider] }}
-                      ></div>
+                    <div className="w-14 h-14 rounded-lg flex items-center justify-center bg-white p-1 overflow-hidden">
+                      {brandDetails.logo ? (
+                        <img src={brandDetails.logo} alt={brandDetails.name} className="w-full h-full object-contain" />
+                      ) : (
+                        <div
+                          className="w-6 h-6 rounded-full"
+                          style={{ backgroundColor: brandDetails.color }}
+                        />
+                      )}
                     </div>
                     <div>
-                      <p className="text-white font-semibold">{selectedProvider?.name}</p>
+                      <p className="text-white font-semibold">{brandDetails.name}</p>
                       <p className="text-[#A1A1AA] text-sm">{selectedProvider?.estimated_time}</p>
                     </div>
                   </div>
