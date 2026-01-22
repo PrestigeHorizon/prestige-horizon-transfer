@@ -3,7 +3,13 @@ import axios from 'axios';
 
 const AuthContext = createContext(null);
 
+//-const API_URL = process.env.REACT_APP_BACKEND_URL;
 const API_URL = process.env.REACT_APP_BACKEND_URL;
+console.log("API_URL =", API_URL);
+
+if (!API_URL) {
+  console.error("❌ REACT_APP_BACKEND_URL est undefined. Vérifie le .env");
+}
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);

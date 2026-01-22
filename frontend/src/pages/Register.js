@@ -80,7 +80,7 @@ const Register = () => {
             <img
               src={LOGO_URL}
               alt="Prestige Horizon"
-              className="relative z-10 w-230 h-230 object-contain animate-fade-in"
+              className="relative z-10 w-250 h-250 object-contain animate-fade-in"
               data-testid="hero-logo"
             />
           </div>
