@@ -41,7 +41,7 @@ class UserCreate(BaseModel):
     password: str
     full_name: str
     phone: str
-    country: str = "Burkina Faso"
+    country: str = "Benin"
 
 class UserLogin(BaseModel):
     email: EmailStr
@@ -58,7 +58,7 @@ class UserResponse(BaseModel):
     created_at: str
 
 class TransferCreate(BaseModel):
-    provider: str  # western_union, moneygram, ria, mtn, moov
+    provider: str  # western_union, moneygram, ria, mtn, moov, coris
     amount: float
     currency: str = "XOF"
     receiver_name: str
@@ -149,7 +149,17 @@ PROVIDERS = {
         "min_amount": 100,
         "max_amount": 1000000,
         "estimated_time": "Instant",
-        "color": "#0068A5"
+        "color": "#00a51b"
+    },
+
+    "coris": {
+    "name": "Coris Money",
+    "fee_percentage": 1.5,
+    "flat_fee": 100,
+    "min_amount": 100,
+    "max_amount": 1000000,
+    "estimated_time": "Instant",
+    "color": "#0068A5"
     }
 }
 
