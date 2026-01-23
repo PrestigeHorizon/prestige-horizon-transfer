@@ -32,7 +32,7 @@ const providerColors = {
   ria: '#F37021',
   mtn: '#FFCC00',
   moov: '#00a51b',
-  Coris: '#0068A5',
+  coris: '#0068A5',
 };
 
 // Map the keys to the exact strings API returns (e.g., 'western_union')
@@ -41,7 +41,7 @@ const providerMaps = {
   moneygram: { name: 'MoneyGram', logo: moneyGramLogo, color: '#E51B24' },
   ria: { name: 'Ria', logo: riaLogo, color: '#F37021' },
   mtn: { name: 'MTN Mobile Money', logo: mtnLogo, color: '#FFCC00' },
-  moov: { name: 'Moov Mobile Money', logo: moovLogo, color: '#00a51b' },
+  moov: { name: 'Moov Money', logo: moovLogo, color: '#00a51b' },
   coris: { name: 'Coris Money', logo: corisLogo, color: '#0068A5' },
 };
 
@@ -78,7 +78,7 @@ const NewTransfer = () => {
     amount: '',
     receiver_name: '',
     receiver_phone: '',
-    receiver_country: 'Burkina Faso',
+    receiver_country: 'Benin',
     notes: '',
   });
 
@@ -203,14 +203,10 @@ const NewTransfer = () => {
             <div className="space-y-8 animate-fade-in">
               <div>
                 <Label className="text-[#A1A1AA] mb-4 block">Select Provider</Label>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-6 xl:grid-cols-3 gap-4">
                   {providers.map((provider) => {
                     // Use the helper to get logo/color, or fallback to defaults
-                    const details = providerMaps[provider.provider] || {
-                      name: provider.name,
-                      logo: null,
-                      color: '#D4AF37'
-                    };
+                    const details = getProviderDetails(provider.provider);
 
                     const isSelected = formData.provider === provider.provider;
 
@@ -227,11 +223,11 @@ const NewTransfer = () => {
                           // Uses the brand color for the border when selected
                           borderColor: isSelected ? details.color : 'transparent',
                           boxShadow: isSelected ? `${details.color}15 0px 0px 15px` : 'none',
-                          backgroundColor: `${details.color}20`, color: details.colo
+                          backgroundColor: `${details.color}20`, color: details.color
                         }}
                       >
                         <div
-                          className="w-12 h-12 rounded-lg flex items-center justify-center mb-3 overflow-hidden bg-white p-1"
+                          className="w-20 h-full rounded-full flex items-center justify-center mb-3 overflow-hidden p-1"
                         >
                           {details.logo ? (
                             <img
@@ -422,7 +418,7 @@ const NewTransfer = () => {
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <div className="flex items-center gap-4 p-4 rounded-lg bg-[#1A1A1A]">
-                    <div className="w-14 h-14 rounded-lg flex items-center justify-center bg-white p-1 overflow-hidden">
+                    <div className="w-20 h-full rounded-lg flex items-center justify-center bg-[#000] p-1 overflow-hidden">
                       {brandDetails.logo ? (
                         <img src={brandDetails.logo} alt={brandDetails.name} className="w-full h-full object-contain" />
                       ) : (

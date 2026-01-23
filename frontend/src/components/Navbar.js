@@ -29,7 +29,7 @@ export const Navbar = () => {
 
   const navLinks = user?.is_admin
     ? [
-      { path: '/admin', label: 'Dashboard', icon: LayoutDashboard },
+      { path: '/admin', label: 'Admin Dashboard', icon: LayoutDashboard },
     ]
     : [
       { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },

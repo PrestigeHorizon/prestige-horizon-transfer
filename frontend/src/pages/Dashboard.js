@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { PlusCircle, ArrowUpRight, Clock, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
+
 import westernUnionLogo from '../images/providers/western-union.png';
 import moneyGramLogo from '../images/providers/moneygram.jpg';
 import riaLogo from '../images/providers/ria.jpg';
@@ -21,15 +22,16 @@ const providerNames = {
   moneygram: 'MoneyGram',
   ria: 'Ria Transfer',
   mtn: 'MTN Mobile Money',
-  moov: 'Moov Mobile Money',
+  moov: 'Moov Money',
+  coris: 'Coris Money',
 };
 
 const providers = [
   { name: 'Western Union', logo: westernUnionLogo, color: '#caad05' },
   { name: 'MoneyGram', logo: moneyGramLogo, color: '#E51B24' },
-  { name: 'Ria', logo: riaLogo, color: '#F37021' },
+  { name: 'Ria Transfer', logo: riaLogo, color: '#F37021' },
   { name: 'MTN Mobile Money', logo: mtnLogo, color: '#FFCC00' },
-  { name: 'Moov Mobile Money', logo: moovLogo, color: '#00a51b' },
+  { name: 'Moov Money', logo: moovLogo, color: '#00a51b' },
   { name: 'Coris Money', logo: corisLogo, color: '#0068A5' },
 ];
 
@@ -203,7 +205,9 @@ const Dashboard = () => {
                           className="w-10 h-10 rounded-lg flex items-center justify-center bg-white/5"
                         >
                           <img
-                            src={providers.find(p => p.name.toLowerCase().includes(transfer.provider.replace('_', '')))?.logo}
+                            src={providers.find(p =>
+                              p.name.toLowerCase() === providerNames[transfer.provider]?.toLowerCase()
+                            )?.logo}
                             alt={providerNames[transfer.provider]}
                             className="h-6 w-auto object-contain transition-transform duration-200 hover:scale-110"
                           />
