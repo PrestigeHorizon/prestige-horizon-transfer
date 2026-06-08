@@ -441,7 +441,7 @@ async def create_admin_user():
         "email": "admin@prestigehorizon.com",
         "password": hash_password("admin123"),
         "full_name": "Admin User",
-        "phone": "+226 00 00 00 00",
+        "phone": "+229 01 56 40 83 46",
         "country": "Burkina Faso",
         "is_admin": True,
         "created_at": now
