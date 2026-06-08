@@ -154,7 +154,7 @@ const Dashboard = () => {
               <Card className="bg-[#0F0F0F] border-white/10 hover:border-opacity-50 transition-all cursor-pointer hover:-translate-y-1">
                 <CardContent className="p-4 flex items-center gap-3">
                   <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-white/5">
-                    <img src={provider.logo} alt={provider.name} className="h-6 w-auto object-contain" />
+                    <img src={provider.logo} alt={provider.name} className="h-6 w-auto rounded-full object-contain" />
                   </div>
                   <span className="text-white text-sm font-medium">{provider.name.split(' ')[0]}</span>
                 </CardContent>
