@@ -1,165 +1,179 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { Navbar } from '@/components/Navbar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import {
-  Clock,
-  CheckCircle,
-  AlertCircle,
-  Loader2,
-  Search,
-  Filter,
-  Users,
-  DollarSign,
-  TrendingUp,
-  Edit,
+  Clock, CheckCircle, AlertCircle, Loader2, Search, Filter,
+  Users, DollarSign, TrendingUp, ChevronRight, RefreshCw,
+  Wallet, Eye, Image as ImageIcon, ExternalLink,
 } from 'lucide-react';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
-const providerColors = {
-  western_union: '#FFDA00',
-  moneygram: '#E51B24',
-  ria: '#F37021',
-  mtn: '#FFCC00',
-  moov: '#0068A5',
+/* ─── Statuts ─── */
+const STATUS_META = {
+  pending:          { label: 'En attente',    color: 'text-amber-400',  bg: 'bg-amber-400/10',  Icon: Clock },
+  payment_received: { label: 'Paiement reçu', color: 'text-blue-400',   bg: 'bg-blue-400/10',   Icon: Wallet },
+  processing:       { label: 'En traitement', color: 'text-purple-400', bg: 'bg-purple-400/10', Icon: Loader2 },
+  completed:        { label: 'Complété',      color: 'text-green-400',  bg: 'bg-green-400/10',  Icon: CheckCircle },
+  cancelled:        { label: 'Annulé',        color: 'text-zinc-400',   bg: 'bg-zinc-400/10',   Icon: AlertCircle },
+  failed:           { label: 'Échoué',        color: 'text-red-400',    bg: 'bg-red-400/10',    Icon: AlertCircle },
 };
 
-const providerNames = {
-  western_union: 'Western Union',
-  moneygram: 'MoneyGram',
-  ria: 'Ria',
-  mtn: 'MTN Mobile Money',
-  moov: 'Moov Money',
+/* Transitions autorisées côté front (miroir du backend) */
+const NEXT_STATUSES = {
+  pending:          ['payment_received', 'cancelled'],
+  payment_received: ['processing', 'cancelled', 'failed'],
+  processing:       ['completed', 'failed'],
+  completed:        [],
+  cancelled:        [],
+  failed:           ['pending'],
 };
 
-const statusIcons = {
-  pending: Clock,
-  processing: Loader2,
-  completed: CheckCircle,
-  cancelled: AlertCircle,
-  failed: AlertCircle,
+const DELIVERY_LABELS = {
+  mtn:           'MTN MoMo',
+  moov:          'Moov Money',
+  bank_transfer: 'Virement bancaire',
+  interac:       'Interac',
+};
+const PAYMENT_LABELS = {
+  interac:       'Interac',
+  crypto_usdc:   'USDC',
+  bank_transfer: 'Virement',
 };
 
+const fmtCAD = (n) => new Intl.NumberFormat('fr-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 }).format(n);
+const fmtXOF = (n) => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'XOF', minimumFractionDigits: 0 }).format(n);
+const fmt = (n, cur) => (cur === 'CAD' ? fmtCAD(n) : fmtXOF(n));
+
+const fmtDate = (d) => new Date(d).toLocaleDateString('fr-CA', {
+  day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit',
+});
+
+/* ── Status badge ── */
+const StatusBadge = ({ status }) => {
+  const m = STATUS_META[status] || STATUS_META.pending;
+  return (
+    <span className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full ${m.color} ${m.bg}`}>
+      <m.Icon className={`w-3 h-3 ${status === 'processing' ? 'animate-spin' : ''}`} />
+      {m.label}
+    </span>
+  );
+};
+
+/* ════════════════════════ */
 const AdminDashboard = () => {
-  const [transfers, setTransfers] = useState([]);
+  const [transfers,         setTransfers]         = useState([]);
   const [filteredTransfers, setFilteredTransfers] = useState([]);
-  const [stats, setStats] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [stats,             setStats]             = useState(null);
+  const [loading,           setLoading]           = useState(true);
+  const [refreshing,        setRefreshing]        = useState(false);
+  const [statusFilter,      setStatusFilter]      = useState('all');
+  const [corridorFilter,    setCorridorFilter]    = useState('all');
+  const [searchQuery,       setSearchQuery]       = useState('');
+
+  /* Modal état */
   const [editingTransfer, setEditingTransfer] = useState(null);
-  const [updateLoading, setUpdateLoading] = useState(false);
-  const [updateData, setUpdateData] = useState({
-    status: '',
-    tracking_number: '',
-    admin_notes: '',
-  });
+  const [updateLoading,   setUpdateLoading]   = useState(false);
+  const [updateData,      setUpdateData]      = useState({ status: '', admin_notes: '', exchange_rate_applied: '' });
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+  /* Modal preuve */
+  const [proofModal,   setProofModal]   = useState(null); // { filename, content_type, data }
+  const [proofLoading, setProofLoading] = useState(false);
 
-  useEffect(() => {
-    filterTransfers();
-  }, [transfers, statusFilter, searchQuery]);
+  const authHeader = () => {
+    const token = localStorage.getItem('token');
+    return { Authorization: `Bearer ${token}` };
+  };
 
-  const fetchData = async () => {
+  const fetchData = async (silent = false) => {
+    if (!silent) setLoading(true); else setRefreshing(true);
     try {
-      const [transfersRes, statsRes] = await Promise.all([
-        axios.get(`${API_URL}/api/admin/transfers`),
-        axios.get(`${API_URL}/api/admin/stats`),
+      const [tRes, sRes] = await Promise.all([
+        axios.get(`${API_URL}/api/admin/transfers`, { headers: authHeader() }),
+        axios.get(`${API_URL}/api/admin/stats`,     { headers: authHeader() }),
       ]);
-      setTransfers(transfersRes.data);
-      setStats(statsRes.data);
-    } catch (error) {
-      console.error('Failed to fetch data:', error);
-      toast.error('Failed to load data');
+      setTransfers(tRes.data);
+      setStats(sRes.data);
+    } catch {
+      toast.error('Erreur lors du chargement des données');
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
-  const filterTransfers = () => {
-    let filtered = [...transfers];
+  useEffect(() => { fetchData(); }, []);
 
-    if (statusFilter !== 'all') {
-      filtered = filtered.filter((t) => t.status === statusFilter);
-    }
-
+  /* Filtrage */
+  useEffect(() => {
+    let f = [...transfers];
+    if (statusFilter !== 'all')   f = f.filter((t) => t.status === statusFilter);
+    if (corridorFilter !== 'all') f = f.filter((t) => t.corridor === corridorFilter);
     if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(
-        (t) =>
-          t.receiver_name.toLowerCase().includes(query) ||
-          t.sender_name.toLowerCase().includes(query) ||
-          t.receiver_phone.includes(query) ||
-          t.tracking_number?.toLowerCase().includes(query)
+      const q = searchQuery.toLowerCase();
+      f = f.filter((t) =>
+        t.receiver_name?.toLowerCase().includes(q) ||
+        t.sender_name?.toLowerCase().includes(q)   ||
+        t.tracking_number?.toLowerCase().includes(q) ||
+        t.receiver_phone?.includes(q)
       );
     }
+    setFilteredTransfers(f);
+  }, [transfers, statusFilter, corridorFilter, searchQuery]);
 
-    setFilteredTransfers(filtered);
+  /* Ouvrir modal édition */
+  const openEdit = (t) => {
+    setEditingTransfer(t);
+    setUpdateData({ status: t.status, admin_notes: t.admin_notes || '', exchange_rate_applied: '' });
   };
 
-  const handleEditClick = (transfer) => {
-    setEditingTransfer(transfer);
-    setUpdateData({
-      status: transfer.status,
-      tracking_number: transfer.tracking_number || '',
-      admin_notes: transfer.admin_notes || '',
-    });
-  };
-
+  /* Sauvegarder */
   const handleUpdate = async () => {
     setUpdateLoading(true);
     try {
-      await axios.put(`${API_URL}/api/admin/transfers/${editingTransfer.id}`, updateData);
-      toast.success('Transfer updated successfully');
+      const payload = { status: updateData.status, admin_notes: updateData.admin_notes || undefined };
+      if (updateData.exchange_rate_applied) payload.exchange_rate_applied = parseFloat(updateData.exchange_rate_applied);
+      await axios.put(`${API_URL}/api/admin/transfers/${editingTransfer.id}`, payload, { headers: authHeader() });
+      toast.success('Transfert mis à jour');
       setEditingTransfer(null);
-      fetchData();
-    } catch (error) {
-      console.error('Update failed:', error);
-      toast.error('Failed to update transfer');
+      fetchData(true);
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Erreur lors de la mise à jour');
     } finally {
       setUpdateLoading(false);
     }
   };
 
-  const formatAmount = (amount, currency = 'XOF') => {
-    return new Intl.NumberFormat('fr-FR', {
-      style: 'currency',
-      currency: currency,
-      minimumFractionDigits: 0,
-    }).format(amount);
+  /* Transition rapide (bouton inline) */
+  const quickTransition = async (transferId, newStatus) => {
+    try {
+      await axios.put(`${API_URL}/api/admin/transfers/${transferId}`, { status: newStatus }, { headers: authHeader() });
+      toast.success(`Statut → ${STATUS_META[newStatus]?.label}`);
+      fetchData(true);
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Erreur');
+    }
   };
 
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+  /* Voir preuve de paiement */
+  const viewProof = async (transferId) => {
+    setProofLoading(true);
+    try {
+      const { data } = await axios.get(`${API_URL}/api/transfers/${transferId}/proof`, { headers: authHeader() });
+      setProofModal(data);
+    } catch {
+      toast.error('Aucune preuve de paiement disponible');
+    } finally {
+      setProofLoading(false);
+    }
   };
 
   if (loading) {
@@ -178,254 +192,354 @@ const AdminDashboard = () => {
       <Navbar />
 
       <main className="pt-24 pb-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-white">Admin Dashboard</h1>
-          <p className="text-[#A1A1AA] mt-1">Manage all transfer requests</p>
+
+        {/* ── Header ── */}
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-3xl font-bold text-white">Admin Dashboard</h1>
+            <p className="text-[#A1A1AA] mt-1">Gestion des transferts Prestige Money Transfer</p>
+          </div>
+          <button
+            onClick={() => fetchData(true)}
+            disabled={refreshing}
+            className="p-2 rounded-lg border border-white/10 text-[#A1A1AA] hover:text-white hover:border-white/20 transition-all"
+          >
+            <RefreshCw className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} />
+          </button>
         </div>
 
-        {/* Stats Grid */}
+        {/* ── Stats bento ── */}
         {stats && (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            <Card className="bg-[#0F0F0F] border-white/10" data-testid="admin-stat-total">
-              <CardContent className="p-6">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-[#D4AF37]/10 flex items-center justify-center">
-                    <TrendingUp className="w-5 h-5 text-[#D4AF37]" />
-                  </div>
-                  <div>
-                    <p className="text-[#A1A1AA] text-sm">Total Transfers</p>
-                    <p className="text-2xl font-bold text-white">{stats.total_transfers}</p>
-                  </div>
+            {[
+              { label: 'Total transferts', value: stats.total_transfers,  Icon: TrendingUp, color: 'text-[#D4AF37]', bg: 'bg-[#D4AF37]/10' },
+              { label: 'En attente',       value: stats.by_status?.pending || 0, Icon: Clock, color: 'text-amber-400', bg: 'bg-amber-400/10' },
+              { label: 'Utilisateurs',     value: stats.total_users,       Icon: Users,     color: 'text-blue-400',   bg: 'bg-blue-400/10' },
+              { label: 'Complétés',        value: stats.by_status?.completed || 0, Icon: CheckCircle, color: 'text-green-400', bg: 'bg-green-400/10' },
+            ].map(({ label, value, Icon, color, bg }) => (
+              <div key={label} className="glass-card rounded-2xl p-6">
+                <div className={`w-9 h-9 rounded-xl ${bg} flex items-center justify-center mb-3`}>
+                  <Icon className={`w-4 h-4 ${color}`} />
                 </div>
-              </CardContent>
-            </Card>
-            <Card className="bg-[#0F0F0F] border-white/10" data-testid="admin-stat-pending">
-              <CardContent className="p-6">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-yellow-500/10 flex items-center justify-center">
-                    <Clock className="w-5 h-5 text-yellow-500" />
-                  </div>
-                  <div>
-                    <p className="text-[#A1A1AA] text-sm">Pending</p>
-                    <p className="text-2xl font-bold text-yellow-500">{stats.pending}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="bg-[#0F0F0F] border-white/10" data-testid="admin-stat-volume">
-              <CardContent className="p-6">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-green-500/10 flex items-center justify-center">
-                    <DollarSign className="w-5 h-5 text-green-500" />
-                  </div>
-                  <div>
-                    <p className="text-[#A1A1AA] text-sm">Total Volume</p>
-                    <p className="text-lg font-bold text-green-500">{formatAmount(stats.total_volume)}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="bg-[#0F0F0F] border-white/10" data-testid="admin-stat-users">
-              <CardContent className="p-6">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
-                    <Users className="w-5 h-5 text-blue-500" />
-                  </div>
-                  <div>
-                    <p className="text-[#A1A1AA] text-sm">Total Users</p>
-                    <p className="text-2xl font-bold text-blue-500">{stats.total_users}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                <p className="text-[#A1A1AA] text-xs uppercase tracking-wider">{label}</p>
+                <p className={`text-3xl font-bold mt-0.5 ${color}`}>{value}</p>
+              </div>
+            ))}
           </div>
         )}
 
-        {/* Filters */}
-        <Card className="bg-[#0F0F0F] border-white/10 mb-6">
-          <CardContent className="p-4">
-            <div className="flex flex-col md:flex-row gap-4">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#A1A1AA]" />
-                <Input
-                  placeholder="Search transfers..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9 bg-[#1A1A1A] border-white/10 text-white"
-                  data-testid="admin-search"
-                />
+        {/* Volumes complétés */}
+        {stats && (stats.volume_cad_completed > 0 || stats.volume_xof_completed > 0) && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+            <div className="glass-card rounded-2xl p-6 flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-green-500/10 flex items-center justify-center shrink-0">
+                <DollarSign className="w-6 h-6 text-green-400" />
               </div>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-full md:w-[180px] bg-[#1A1A1A] border-white/10 text-white" data-testid="admin-status-filter">
-                  <Filter className="w-4 h-4 mr-2" />
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent className="bg-[#1A1A1A] border-white/10">
-                  <SelectItem value="all" className="text-white">All Status</SelectItem>
-                  <SelectItem value="pending" className="text-white">Pending</SelectItem>
-                  <SelectItem value="processing" className="text-white">Processing</SelectItem>
-                  <SelectItem value="completed" className="text-white">Completed</SelectItem>
-                  <SelectItem value="cancelled" className="text-white">Cancelled</SelectItem>
-                  <SelectItem value="failed" className="text-white">Failed</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Transfers Table */}
-        <Card className="bg-[#0F0F0F] border-white/10" data-testid="admin-transfers-table">
-          <CardHeader>
-            <CardTitle className="text-white">All Transfers ({filteredTransfers.length})</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {filteredTransfers.length === 0 ? (
-              <div className="text-center py-12 text-[#A1A1AA]">
-                No transfers found
+              <div>
+                <p className="text-[#A1A1AA] text-xs uppercase tracking-wider">Volume CAD complété</p>
+                <p className="text-xl font-bold text-green-400">{fmtCAD(stats.volume_cad_completed)}</p>
+                <p className="text-xs text-[#555]">Frais : {fmtCAD(stats.fees_cad_collected)}</p>
               </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="data-table w-full">
-                  <thead>
-                    <tr>
-                      <th>Provider</th>
-                      <th>Sender</th>
-                      <th>Receiver</th>
-                      <th>Amount</th>
-                      <th>Status</th>
-                      <th>Date</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredTransfers.map((transfer) => {
-                      const StatusIcon = statusIcons[transfer.status];
-                      return (
-                        <tr key={transfer.id} data-testid={`admin-transfer-${transfer.id}`}>
-                          <td>
-                            <div className="flex items-center gap-2">
-                              <div
-                                className="w-8 h-8 rounded flex items-center justify-center"
-                                style={{ backgroundColor: `${providerColors[transfer.provider]}20` }}
-                              >
-                                <div
-                                  className="w-3 h-3 rounded-full"
-                                  style={{ backgroundColor: providerColors[transfer.provider] }}
-                                ></div>
-                              </div>
-                              <span className="text-white text-sm">{providerNames[transfer.provider]?.split(' ')[0]}</span>
-                            </div>
-                          </td>
-                          <td>
-                            <div>
-                              <p className="text-white text-sm">{transfer.sender_name}</p>
-                              <p className="text-[#A1A1AA] text-xs">{transfer.sender_phone}</p>
-                            </div>
-                          </td>
-                          <td>
-                            <div>
-                              <p className="text-white text-sm">{transfer.receiver_name}</p>
-                              <p className="text-[#A1A1AA] text-xs">{transfer.receiver_phone}</p>
-                            </div>
-                          </td>
-                          <td>
-                            <p className="text-white font-semibold">{formatAmount(transfer.amount)}</p>
-                            <p className="text-[#A1A1AA] text-xs">Fee: {formatAmount(transfer.fee)}</p>
-                          </td>
-                          <td>
-                            <Badge variant="outline" className={`status-${transfer.status} border-0`}>
-                              <StatusIcon className={`w-3 h-3 mr-1 ${transfer.status === 'processing' ? 'animate-spin' : ''}`} />
-                              {transfer.status}
-                            </Badge>
-                          </td>
-                          <td className="text-white text-sm">{formatDate(transfer.created_at)}</td>
-                          <td>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleEditClick(transfer)}
-                              className="text-[#D4AF37] hover:bg-white/5"
-                              data-testid={`edit-transfer-${transfer.id}`}
-                            >
-                              <Edit className="w-4 h-4" />
-                            </Button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+            </div>
+            <div className="glass-card rounded-2xl p-6 flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-purple-500/10 flex items-center justify-center shrink-0">
+                <DollarSign className="w-6 h-6 text-purple-400" />
               </div>
-            )}
-          </CardContent>
-        </Card>
-      </main>
-
-      {/* Edit Dialog */}
-      <Dialog open={!!editingTransfer} onOpenChange={() => setEditingTransfer(null)}>
-        <DialogContent className="bg-[#0F0F0F] border-white/10 text-white">
-          <DialogHeader>
-            <DialogTitle>Update Transfer</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label className="text-[#A1A1AA]">Status</Label>
-              <Select
-                value={updateData.status}
-                onValueChange={(value) => setUpdateData({ ...updateData, status: value })}
-              >
-                <SelectTrigger className="bg-[#1A1A1A] border-white/10 text-white" data-testid="edit-status">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-[#1A1A1A] border-white/10">
-                  <SelectItem value="pending" className="text-white">Pending</SelectItem>
-                  <SelectItem value="processing" className="text-white">Processing</SelectItem>
-                  <SelectItem value="completed" className="text-white">Completed</SelectItem>
-                  <SelectItem value="cancelled" className="text-white">Cancelled</SelectItem>
-                  <SelectItem value="failed" className="text-white">Failed</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label className="text-[#A1A1AA]">Tracking Number</Label>
-              <Input
-                value={updateData.tracking_number}
-                onChange={(e) => setUpdateData({ ...updateData, tracking_number: e.target.value })}
-                placeholder="Enter tracking number"
-                className="bg-[#1A1A1A] border-white/10 text-white"
-                data-testid="edit-tracking"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label className="text-[#A1A1AA]">Admin Notes</Label>
-              <Textarea
-                value={updateData.admin_notes}
-                onChange={(e) => setUpdateData({ ...updateData, admin_notes: e.target.value })}
-                placeholder="Add notes..."
-                className="bg-[#1A1A1A] border-white/10 text-white resize-none"
-                rows={3}
-                data-testid="edit-notes"
-              />
+              <div>
+                <p className="text-[#A1A1AA] text-xs uppercase tracking-wider">Volume XOF complété</p>
+                <p className="text-xl font-bold text-purple-400">{fmtXOF(stats.volume_xof_completed)}</p>
+                <p className="text-xs text-[#555]">Frais : {fmtXOF(stats.fees_xof_collected)}</p>
+              </div>
             </div>
           </div>
+        )}
+
+        {/* ── Filtres ── */}
+        <div className="glass-card rounded-2xl p-4 mb-6">
+          <div className="flex flex-col md:flex-row gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#A1A1AA]" />
+              <Input
+                placeholder="Rechercher par nom, téléphone, tracking…"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9 bg-[#1A1A1A] border-white/10 text-white focus:border-[#D4AF37]"
+                data-testid="admin-search"
+              />
+            </div>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-full md:w-[200px] bg-[#1A1A1A] border-white/10 text-white" data-testid="admin-status-filter">
+                <Filter className="w-4 h-4 mr-2 text-[#A1A1AA]" />
+                <SelectValue placeholder="Statut" />
+              </SelectTrigger>
+              <SelectContent className="bg-[#1A1A1A] border-white/10">
+                <SelectItem value="all"             className="text-white">Tous les statuts</SelectItem>
+                {Object.entries(STATUS_META).map(([k, v]) => (
+                  <SelectItem key={k} value={k} className="text-white">{v.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={corridorFilter} onValueChange={setCorridorFilter}>
+              <SelectTrigger className="w-full md:w-[200px] bg-[#1A1A1A] border-white/10 text-white">
+                <SelectValue placeholder="Corridor" />
+              </SelectTrigger>
+              <SelectContent className="bg-[#1A1A1A] border-white/10">
+                <SelectItem value="all"             className="text-white">Tous les corridors</SelectItem>
+                <SelectItem value="canada_to_benin" className="text-white">🇨🇦 → 🇧🇯 Canada → Bénin</SelectItem>
+                <SelectItem value="benin_to_canada" className="text-white">🇧🇯 → 🇨🇦 Bénin → Canada</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {/* ── Liste des transferts ── */}
+        <div className="glass-card rounded-2xl overflow-hidden" data-testid="admin-transfers-table">
+          <div className="px-6 py-5 border-b border-white/5 flex items-center justify-between">
+            <h2 className="text-white font-semibold">
+              Transferts <span className="text-[#A1A1AA] text-sm font-normal ml-1">({filteredTransfers.length})</span>
+            </h2>
+          </div>
+
+          {filteredTransfers.length === 0 ? (
+            <div className="text-center py-16 text-[#A1A1AA]">Aucun transfert trouvé</div>
+          ) : (
+            <div className="divide-y divide-white/5">
+              {filteredTransfers.map((t) => {
+                const nextStates = NEXT_STATUSES[t.status] || [];
+                return (
+                  <div key={t.id} className="px-6 py-4 hover:bg-white/5 transition-colors" data-testid={`admin-transfer-${t.id}`}>
+                    <div className="flex flex-col lg:flex-row lg:items-center gap-4">
+
+                      {/* Infos principales */}
+                      <div className="flex-1 grid grid-cols-2 md:grid-cols-4 gap-4">
+                        {/* Corridor + tracking */}
+                        <div>
+                          <p className="text-white text-sm font-medium">
+                            {t.corridor === 'canada_to_benin' ? '🇨🇦→🇧🇯' : '🇧🇯→🇨🇦'}
+                          </p>
+                          <p className="text-[#555] text-xs font-mono mt-0.5">{t.tracking_number}</p>
+                          <p className="text-[#A1A1AA] text-xs mt-0.5">{fmtDate(t.created_at)}</p>
+                        </div>
+
+                        {/* Expéditeur / receveur */}
+                        <div>
+                          <p className="text-[#A1A1AA] text-xs">Envoyeur</p>
+                          <p className="text-white text-sm font-medium">{t.sender_name}</p>
+                          <p className="text-[#A1A1AA] text-xs">{t.sender_phone}</p>
+                        </div>
+                        <div>
+                          <p className="text-[#A1A1AA] text-xs">Receveur</p>
+                          <p className="text-white text-sm font-medium">{t.receiver_name}</p>
+                          <p className="text-[#A1A1AA] text-xs">
+                            {t.receiver_phone || t.receiver_interac_email || t.receiver_bank_account || '—'}
+                          </p>
+                        </div>
+
+                        {/* Montants */}
+                        <div>
+                          <p className="text-[#A1A1AA] text-xs">Montants</p>
+                          <p className="text-white text-sm font-semibold">{fmt(t.send_amount, t.send_currency)}</p>
+                          <p className="text-[#D4AF37] text-xs">→ {fmt(t.receive_amount, t.receive_currency)}</p>
+                          <p className="text-[#555] text-xs">
+                            {PAYMENT_LABELS[t.payment_method]} · {DELIVERY_LABELS[t.delivery_method]}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Statut + actions */}
+                      <div className="flex flex-wrap items-center gap-2 shrink-0">
+                        <StatusBadge status={t.status} />
+
+                        {/* Bouton preuve */}
+                        {t.payment_proof_filename && (
+                          <button
+                            onClick={() => viewProof(t.id)}
+                            disabled={proofLoading}
+                            className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full bg-blue-400/10 text-blue-400 hover:bg-blue-400/20 transition-colors"
+                            title="Voir preuve de paiement"
+                          >
+                            <ImageIcon className="w-3 h-3" />
+                            Preuve
+                          </button>
+                        )}
+
+                        {/* Transitions rapides */}
+                        {nextStates.map((ns) => (
+                          <button
+                            key={ns}
+                            onClick={() => quickTransition(t.id, ns)}
+                            className={`inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full border border-white/10 hover:border-white/30 transition-colors ${STATUS_META[ns]?.color}`}
+                          >
+                            <ChevronRight className="w-3 h-3" />
+                            {STATUS_META[ns]?.label}
+                          </button>
+                        ))}
+
+                        {/* Modifier */}
+                        <button
+                          onClick={() => openEdit(t)}
+                          className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full bg-white/5 text-[#A1A1AA] hover:text-white hover:bg-white/10 transition-colors"
+                          data-testid={`edit-transfer-${t.id}`}
+                        >
+                          <Eye className="w-3 h-3" />
+                          Détail
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Notes admin */}
+                    {t.admin_notes && (
+                      <p className="mt-2 text-xs text-[#A1A1AA] bg-white/5 rounded-lg px-3 py-2">
+                        📝 {t.admin_notes}
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </main>
+
+      {/* ══ Dialog : éditer un transfert ══ */}
+      <Dialog open={!!editingTransfer} onOpenChange={() => setEditingTransfer(null)}>
+        <DialogContent className="bg-[#0F0F0F] border-white/10 text-white max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-white">
+              Modifier le transfert
+              <span className="text-[#A1A1AA] text-sm font-normal ml-2">
+                {editingTransfer?.tracking_number}
+              </span>
+            </DialogTitle>
+          </DialogHeader>
+
+          {editingTransfer && (
+            <div className="space-y-5 py-2">
+              {/* Récap */}
+              <div className="bg-[#1A1A1A] rounded-xl p-4 space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-[#A1A1AA]">Envoyeur</span>
+                  <span className="text-white">{editingTransfer.sender_name}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-[#A1A1AA]">Receveur</span>
+                  <span className="text-white">{editingTransfer.receiver_name}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-[#A1A1AA]">Montant</span>
+                  <span className="text-[#D4AF37] font-semibold">
+                    {fmt(editingTransfer.send_amount, editingTransfer.send_currency)}
+                    {' → '}
+                    {fmt(editingTransfer.receive_amount, editingTransfer.receive_currency)}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-[#A1A1AA]">Statut actuel</span>
+                  <StatusBadge status={editingTransfer.status} />
+                </div>
+              </div>
+
+              {/* Nouveau statut */}
+              <div>
+                <Label className="text-[#A1A1AA] text-sm mb-2 block">Nouveau statut</Label>
+                <Select value={updateData.status} onValueChange={(v) => setUpdateData((p) => ({ ...p, status: v }))}>
+                  <SelectTrigger className="bg-[#1A1A1A] border-white/10 text-white" data-testid="edit-status">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-[#1A1A1A] border-white/10">
+                    {/* Statut actuel toujours disponible */}
+                    <SelectItem value={editingTransfer.status} className="text-white">
+                      {STATUS_META[editingTransfer.status]?.label} (actuel)
+                    </SelectItem>
+                    {(NEXT_STATUSES[editingTransfer.status] || []).map((ns) => (
+                      <SelectItem key={ns} value={ns} className="text-white">
+                        {STATUS_META[ns]?.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Taux appliqué (visible si processing → completed) */}
+              {updateData.status === 'completed' && (
+                <div>
+                  <Label className="text-[#A1A1AA] text-sm mb-2 block">
+                    Taux de change appliqué (optionnel)
+                  </Label>
+                  <Input
+                    type="number"
+                    placeholder={`Ex : ${editingTransfer.exchange_rate}`}
+                    value={updateData.exchange_rate_applied}
+                    onChange={(e) => setUpdateData((p) => ({ ...p, exchange_rate_applied: e.target.value }))}
+                    className="bg-[#1A1A1A] border-white/10 text-white focus:border-[#D4AF37]"
+                  />
+                </div>
+              )}
+
+              {/* Notes admin */}
+              <div>
+                <Label className="text-[#A1A1AA] text-sm mb-2 block">Notes admin</Label>
+                <Textarea
+                  value={updateData.admin_notes}
+                  onChange={(e) => setUpdateData((p) => ({ ...p, admin_notes: e.target.value }))}
+                  placeholder="Décaissement effectué le… / Reçu vérifié…"
+                  className="bg-[#1A1A1A] border-white/10 text-white resize-none focus:border-[#D4AF37]"
+                  rows={3}
+                  data-testid="edit-notes"
+                />
+              </div>
+            </div>
+          )}
+
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setEditingTransfer(null)}
-              className="border-white/10 text-white hover:bg-white/5"
-            >
-              Cancel
+            <Button variant="outline" onClick={() => setEditingTransfer(null)} className="border-white/10 text-white hover:bg-white/5">
+              Annuler
             </Button>
             <Button
               onClick={handleUpdate}
-              disabled={updateLoading}
-              className="bg-[#D4AF37] text-black hover:bg-[#B59326]"
+              disabled={updateLoading || updateData.status === editingTransfer?.status && !updateData.admin_notes}
+              className="bg-[#D4AF37] text-black hover:bg-[#B59326] font-semibold"
               data-testid="save-update"
             >
-              {updateLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save Changes'}
+              {updateLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Enregistrer'}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ══ Dialog : preuve de paiement ══ */}
+      <Dialog open={!!proofModal} onOpenChange={() => setProofModal(null)}>
+        <DialogContent className="bg-[#0F0F0F] border-white/10 text-white max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-white flex items-center gap-2">
+              <ImageIcon className="w-5 h-5 text-[#D4AF37]" />
+              Preuve de paiement
+            </DialogTitle>
+          </DialogHeader>
+          {proofModal && (
+            <div className="space-y-4">
+              <p className="text-[#A1A1AA] text-sm">{proofModal.filename} · {proofModal.uploaded_at ? new Date(proofModal.uploaded_at).toLocaleString('fr-CA') : ''}</p>
+              {proofModal.content_type?.startsWith('image/') ? (
+                <img
+                  src={`data:${proofModal.content_type};base64,${proofModal.data}`}
+                  alt="Preuve de paiement"
+                  className="w-full rounded-xl border border-white/10 max-h-[60vh] object-contain"
+                />
+              ) : (
+                <div className="p-6 bg-[#1A1A1A] rounded-xl text-center space-y-3">
+                  <ExternalLink className="w-10 h-10 text-[#D4AF37] mx-auto" />
+                  <p className="text-white text-sm">Fichier PDF — cliquez pour télécharger</p>
+                  <a
+                    href={`data:${proofModal.content_type};base64,${proofModal.data}`}
+                    download={proofModal.filename}
+                    className="inline-block px-5 py-2 bg-[#D4AF37] text-black rounded-lg text-sm font-semibold hover:bg-[#B59326]"
+                  >
+                    Télécharger le PDF
+                  </a>
+                </div>
+              )}
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

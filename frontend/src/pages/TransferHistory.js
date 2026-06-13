@@ -1,261 +1,260 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
+import { useAuth } from '@/context/AuthContext';
 import { Navbar } from '@/components/Navbar';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Clock, CheckCircle, AlertCircle, Loader2, Filter, Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { toast } from 'sonner';
+import {
+  Clock, CheckCircle, AlertCircle, Loader2, Filter, Search,
+  PlusCircle, ArrowUpRight, Wallet, Send,
+} from 'lucide-react';
+import mtnLogo  from '../images/providers/mtn-momo.png';
+import moovLogo from '../images/providers/moov-money.png';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
-const providerColors = {
-  western_union: '#FFDA00',
-  moneygram: '#E51B24',
-  ria: '#F37021',
-  mtn: '#FFCC00',
-  moov: '#0068A5',
+const STATUS_META = {
+  pending:          { label: 'En attente',    color: 'text-amber-400',  bg: 'bg-amber-400/10',  Icon: Clock },
+  payment_received: { label: 'Paiement reçu', color: 'text-blue-400',   bg: 'bg-blue-400/10',   Icon: Wallet },
+  processing:       { label: 'En traitement', color: 'text-purple-400', bg: 'bg-purple-400/10', Icon: Loader2 },
+  completed:        { label: 'Complété',      color: 'text-green-400',  bg: 'bg-green-400/10',  Icon: CheckCircle },
+  cancelled:        { label: 'Annulé',        color: 'text-zinc-400',   bg: 'bg-zinc-400/10',   Icon: AlertCircle },
+  failed:           { label: 'Échoué',        color: 'text-red-400',    bg: 'bg-red-400/10',    Icon: AlertCircle },
 };
 
-const providerNames = {
-  western_union: 'Western Union',
-  moneygram: 'MoneyGram',
-  ria: 'Ria',
-  mtn: 'MTN Mobile Money',
-  moov: 'Moov Money',
+const DELIVERY_ASSETS = {
+  mtn:           { logo: mtnLogo,  color: '#FFCC00', label: 'MTN MoMo',         initials: null },
+  moov:          { logo: moovLogo, color: '#00a51b', label: 'Moov Money',        initials: null },
+  bank_transfer: { logo: null,     color: '#D4AF37', label: 'Virement bancaire', initials: 'VB' },
+  interac:       { logo: null,     color: '#D4AF37', label: 'Interac',           initials: 'IC' },
 };
 
-const statusIcons = {
-  pending: Clock,
-  processing: Loader2,
-  completed: CheckCircle,
-  cancelled: AlertCircle,
-  failed: AlertCircle,
+const fmtCAD = (n) => new Intl.NumberFormat('fr-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 }).format(n);
+const fmtXOF = (n) => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'XOF', minimumFractionDigits: 0 }).format(n);
+const fmt    = (n, cur) => cur === 'CAD' ? fmtCAD(n) : fmtXOF(n);
+
+const fmtDate = (d) => new Date(d).toLocaleDateString('fr-CA', {
+  year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
+});
+
+/* ── Delivery chip ── */
+const DeliveryChip = ({ method }) => {
+  const a = DELIVERY_ASSETS[method] || {};
+  if (a.logo) return <img src={a.logo} alt={a.label} className="h-7 w-auto object-contain" />;
+  return (
+    <div className="text-xs font-bold px-2 py-0.5 rounded"
+      style={{ background: `${a.color}20`, color: a.color }}>
+      {a.initials}
+    </div>
+  );
 };
 
+/* ── Status badge ── */
+const StatusBadge = ({ status }) => {
+  const m = STATUS_META[status] || STATUS_META.pending;
+  return (
+    <span className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full ${m.color} ${m.bg}`}>
+      <m.Icon className={`w-3 h-3 ${status === 'processing' ? 'animate-spin' : ''}`} />
+      {m.label}
+    </span>
+  );
+};
+
+/* ════════════════════════════════════════════════════ */
 const TransferHistory = () => {
-  const [transfers, setTransfers] = useState([]);
+  const { user } = useAuth();
+  const [transfers,         setTransfers]         = useState([]);
   const [filteredTransfers, setFilteredTransfers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [providerFilter, setProviderFilter] = useState('all');
-  const [searchQuery, setSearchQuery] = useState('');
-
-  useEffect(() => {
-    fetchTransfers();
-  }, []);
-
-  useEffect(() => {
-    filterTransfers();
-  }, [transfers, statusFilter, providerFilter, searchQuery]);
+  const [loading,           setLoading]           = useState(true);
+  const [statusFilter,      setStatusFilter]      = useState('all');
+  const [corridorFilter,    setCorridorFilter]    = useState('all');
+  const [searchQuery,       setSearchQuery]       = useState('');
 
   const fetchTransfers = async () => {
     try {
-      const response = await axios.get(`${API_URL}/api/transfers`);
-      setTransfers(response.data);
-    } catch (error) {
-      console.error('Failed to fetch transfers:', error);
+      const token = localStorage.getItem('token');
+      const { data } = await axios.get(`${API_URL}/api/transfers`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setTransfers(data);
+    } catch {
+      toast.error('Impossible de charger vos transferts');
     } finally {
       setLoading(false);
     }
   };
 
-  const filterTransfers = () => {
-    let filtered = [...transfers];
+  useEffect(() => { fetchTransfers(); }, []);
 
-    if (statusFilter !== 'all') {
-      filtered = filtered.filter((t) => t.status === statusFilter);
-    }
-
-    if (providerFilter !== 'all') {
-      filtered = filtered.filter((t) => t.provider === providerFilter);
-    }
-
+  useEffect(() => {
+    let f = [...transfers];
+    if (statusFilter  !== 'all') f = f.filter((t) => t.status   === statusFilter);
+    if (corridorFilter !== 'all') f = f.filter((t) => t.corridor === corridorFilter);
     if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(
-        (t) =>
-          t.receiver_name.toLowerCase().includes(query) ||
-          t.receiver_phone.includes(query) ||
-          t.tracking_number?.toLowerCase().includes(query)
+      const q = searchQuery.toLowerCase();
+      f = f.filter((t) =>
+        t.receiver_name?.toLowerCase().includes(q) ||
+        t.receiver_phone?.includes(q) ||
+        t.tracking_number?.toLowerCase().includes(q)
       );
     }
+    setFilteredTransfers(f);
+  }, [transfers, statusFilter, corridorFilter, searchQuery]);
 
-    setFilteredTransfers(filtered);
-  };
-
-  const formatAmount = (amount, currency = 'XOF') => {
-    return new Intl.NumberFormat('fr-FR', {
-      style: 'currency',
-      currency: currency,
-      minimumFractionDigits: 0,
-    }).format(amount);
-  };
-
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
+  /* ── Stats rapides ── */
+  const total     = transfers.length;
+  const active    = transfers.filter((t) => ['pending', 'payment_received', 'processing'].includes(t.status)).length;
+  const completed = transfers.filter((t) => t.status === 'completed').length;
 
   return (
     <div className="min-h-screen bg-[#050505]" data-testid="transfer-history-page">
       <Navbar />
 
-      <main className="pt-24 pb-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+      <main className="pt-24 pb-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+
+        {/* ── Header ── */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-white">Transfer History</h1>
-            <p className="text-[#A1A1AA] mt-1">View all your past transfers</p>
+            <h1 className="text-3xl font-bold text-white">Historique des transferts</h1>
+            <p className="text-[#A1A1AA] mt-1">Tous vos envois Canada ↔ Bénin</p>
           </div>
           <Link to="/new-transfer">
             <Button className="bg-[#D4AF37] text-black hover:bg-[#B59326] font-semibold" data-testid="new-transfer-btn">
-              New Transfer
+              <PlusCircle className="w-4 h-4 mr-2" />
+              Nouveau transfert
             </Button>
           </Link>
         </div>
 
-        {/* Filters */}
-        <Card className="bg-[#0F0F0F] border-white/10 mb-6">
-          <CardContent className="p-4">
-            <div className="flex flex-col md:flex-row gap-4">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#A1A1AA]" />
-                <Input
-                  placeholder="Search by name, phone, or tracking number..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9 bg-[#1A1A1A] border-white/10 text-white"
-                  data-testid="search-input"
-                />
+        {/* ── Mini stats ── */}
+        {total > 0 && (
+          <div className="grid grid-cols-3 gap-3 mb-6">
+            {[
+              { label: 'Total',      value: total,     color: 'text-white' },
+              { label: 'En cours',   value: active,    color: 'text-amber-400' },
+              { label: 'Complétés',  value: completed, color: 'text-green-400' },
+            ].map((s) => (
+              <div key={s.label} className="glass-card rounded-xl p-4 text-center">
+                <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
+                <p className="text-[#A1A1AA] text-xs mt-0.5">{s.label}</p>
               </div>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-full md:w-[180px] bg-[#1A1A1A] border-white/10 text-white" data-testid="status-filter">
-                  <Filter className="w-4 h-4 mr-2" />
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent className="bg-[#1A1A1A] border-white/10">
-                  <SelectItem value="all" className="text-white">All Status</SelectItem>
-                  <SelectItem value="pending" className="text-white">Pending</SelectItem>
-                  <SelectItem value="processing" className="text-white">Processing</SelectItem>
-                  <SelectItem value="completed" className="text-white">Completed</SelectItem>
-                  <SelectItem value="cancelled" className="text-white">Cancelled</SelectItem>
-                  <SelectItem value="failed" className="text-white">Failed</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={providerFilter} onValueChange={setProviderFilter}>
-                <SelectTrigger className="w-full md:w-[180px] bg-[#1A1A1A] border-white/10 text-white" data-testid="provider-filter">
-                  <SelectValue placeholder="Provider" />
-                </SelectTrigger>
-                <SelectContent className="bg-[#1A1A1A] border-white/10">
-                  <SelectItem value="all" className="text-white">All Providers</SelectItem>
-                  {Object.entries(providerNames).map(([key, name]) => (
-                    <SelectItem key={key} value={key} className="text-white">
-                      {name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </CardContent>
-        </Card>
+            ))}
+          </div>
+        )}
 
-        {/* Transfers List */}
-        <Card className="bg-[#0F0F0F] border-white/10" data-testid="transfers-list">
-          <CardHeader>
-            <CardTitle className="text-white flex items-center justify-between">
-              <span>Transfers</span>
-              <span className="text-sm font-normal text-[#A1A1AA]">
-                {filteredTransfers.length} {filteredTransfers.length === 1 ? 'transfer' : 'transfers'}
-              </span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <div className="flex justify-center py-12">
-                <Loader2 className="w-8 h-8 text-[#D4AF37] animate-spin" />
+        {/* ── Filtres ── */}
+        <div className="glass-card rounded-2xl p-4 mb-6">
+          <div className="flex flex-col md:flex-row gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#A1A1AA]" />
+              <Input
+                placeholder="Nom, téléphone ou numéro de suivi…"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9 bg-[#1A1A1A] border-white/10 text-white focus:border-[#D4AF37]"
+                data-testid="search-input"
+              />
+            </div>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-full md:w-[200px] bg-[#1A1A1A] border-white/10 text-white" data-testid="status-filter">
+                <Filter className="w-4 h-4 mr-2 text-[#A1A1AA]" />
+                <SelectValue placeholder="Statut" />
+              </SelectTrigger>
+              <SelectContent className="bg-[#1A1A1A] border-white/10">
+                <SelectItem value="all" className="text-white">Tous les statuts</SelectItem>
+                {Object.entries(STATUS_META).map(([k, v]) => (
+                  <SelectItem key={k} value={k} className="text-white">{v.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={corridorFilter} onValueChange={setCorridorFilter}>
+              <SelectTrigger className="w-full md:w-[200px] bg-[#1A1A1A] border-white/10 text-white" data-testid="corridor-filter">
+                <SelectValue placeholder="Corridor" />
+              </SelectTrigger>
+              <SelectContent className="bg-[#1A1A1A] border-white/10">
+                <SelectItem value="all"             className="text-white">Tous les corridors</SelectItem>
+                <SelectItem value="canada_to_benin" className="text-white">🇨🇦 → 🇧🇯 Canada → Bénin</SelectItem>
+                <SelectItem value="benin_to_canada" className="text-white">🇧🇯 → 🇨🇦 Bénin → Canada</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {/* ── Liste ── */}
+        <div className="glass-card rounded-2xl overflow-hidden" data-testid="transfers-list">
+          <div className="flex items-center justify-between px-6 py-5 border-b border-white/5">
+            <h2 className="text-white font-semibold">
+              Transferts{' '}
+              <span className="text-[#A1A1AA] text-sm font-normal">({filteredTransfers.length})</span>
+            </h2>
+          </div>
+
+          {loading ? (
+            <div className="flex justify-center py-16">
+              <Loader2 className="w-8 h-8 text-[#D4AF37] animate-spin" />
+            </div>
+          ) : filteredTransfers.length === 0 ? (
+            <div className="text-center py-16 px-6">
+              <div className="w-16 h-16 rounded-2xl bg-[#D4AF37]/10 flex items-center justify-center mx-auto mb-4">
+                <Send className="w-7 h-7 text-[#D4AF37]" />
               </div>
-            ) : filteredTransfers.length === 0 ? (
-              <div className="text-center py-12">
-                <p className="text-[#A1A1AA] mb-4">
-                  {transfers.length === 0 ? 'No transfers yet' : 'No transfers match your filters'}
-                </p>
-                {transfers.length === 0 && (
-                  <Link to="/new-transfer">
-                    <Button className="bg-[#D4AF37] text-black hover:bg-[#B59326]">
-                      Make Your First Transfer
-                    </Button>
-                  </Link>
-                )}
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {filteredTransfers.map((transfer) => {
-                  const StatusIcon = statusIcons[transfer.status];
-                  return (
-                    <Link
-                      key={transfer.id}
-                      to={`/transfers/${transfer.id}`}
-                      className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-lg bg-[#1A1A1A]/50 hover:bg-[#1A1A1A] transition-colors gap-4"
-                      data-testid={`transfer-item-${transfer.id}`}
-                    >
-                      <div className="flex items-center gap-4">
-                        <div
-                          className="w-12 h-12 rounded-lg flex items-center justify-center shrink-0"
-                          style={{ backgroundColor: `${providerColors[transfer.provider]}20` }}
-                        >
-                          <div
-                            className="w-5 h-5 rounded-full"
-                            style={{ backgroundColor: providerColors[transfer.provider] }}
-                          ></div>
-                        </div>
-                        <div>
-                          <p className="text-white font-medium">{transfer.receiver_name}</p>
-                          <p className="text-[#A1A1AA] text-sm">
-                            {providerNames[transfer.provider]}
-                          </p>
-                          <p className="text-[#A1A1AA] text-xs mt-1">
-                            {formatDate(transfer.created_at)}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between sm:justify-end gap-6">
-                        <div className="text-right">
-                          <p className="text-white font-semibold">
-                            {formatAmount(transfer.amount, transfer.currency)}
-                          </p>
-                          <p className="text-[#A1A1AA] text-xs">
-                            Fee: {formatAmount(transfer.fee)}
-                          </p>
-                        </div>
-                        <Badge
-                          variant="outline"
-                          className={`status-${transfer.status} border-0 shrink-0`}
-                        >
-                          <StatusIcon className={`w-3 h-3 mr-1 ${transfer.status === 'processing' ? 'animate-spin' : ''}`} />
-                          {transfer.status.charAt(0).toUpperCase() + transfer.status.slice(1)}
-                        </Badge>
-                      </div>
-                    </Link>
-                  );
-                })}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+              <p className="text-white font-semibold mb-1">
+                {transfers.length === 0 ? 'Aucun transfert pour l\'instant' : 'Aucun résultat'}
+              </p>
+              <p className="text-[#A1A1AA] text-sm mb-6">
+                {transfers.length === 0
+                  ? 'Initiez votre premier envoi Canada ↔ Bénin'
+                  : 'Essayez de modifier vos filtres'}
+              </p>
+              {transfers.length === 0 && (
+                <Link to="/new-transfer">
+                  <Button className="bg-[#D4AF37] text-black hover:bg-[#B59326] font-semibold">
+                    Faire mon premier transfert
+                  </Button>
+                </Link>
+              )}
+            </div>
+          ) : (
+            <div className="divide-y divide-white/5">
+              {filteredTransfers.map((t) => (
+                <Link
+                  key={t.id}
+                  to={`/transfers/${t.id}`}
+                  className="flex items-center justify-between px-6 py-4 hover:bg-white/5 transition-colors group"
+                  data-testid={`transfer-item-${t.id}`}
+                >
+                  {/* Gauche */}
+                  <div className="flex items-center gap-4">
+                    <div className="w-11 h-11 rounded-xl bg-[#1A1A1A] flex items-center justify-center shrink-0">
+                      <DeliveryChip method={t.delivery_method} />
+                    </div>
+                    <div>
+                      <p className="text-white font-medium text-sm">{t.receiver_name}</p>
+                      <p className="text-[#A1A1AA] text-xs mt-0.5">
+                        {t.corridor === 'canada_to_benin' ? '🇨🇦→🇧🇯' : '🇧🇯→🇨🇦'} ·{' '}
+                        {DELIVERY_ASSETS[t.delivery_method]?.label} · {fmtDate(t.created_at)}
+                      </p>
+                      <p className="text-[#555] text-xs font-mono mt-0.5">{t.tracking_number}</p>
+                    </div>
+                  </div>
+
+                  {/* Droite */}
+                  <div className="flex items-center gap-4 shrink-0">
+                    <div className="text-right hidden sm:block">
+                      <p className="text-white font-semibold text-sm">{fmt(t.send_amount, t.send_currency)}</p>
+                      <p className="text-[#D4AF37] text-xs font-medium">{fmt(t.receive_amount, t.receive_currency)}</p>
+                    </div>
+                    <StatusBadge status={t.status} />
+                    <ArrowUpRight className="w-4 h-4 text-[#555] group-hover:text-[#D4AF37] transition-colors" />
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
       </main>
     </div>
   );
