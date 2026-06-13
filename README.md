@@ -30,7 +30,12 @@ npm install
 uvicorn server:app --reload
 uvicorn server:app --reload --port 8000
 
+# In conclusion
+- main folder : .venv\Scripts\Activate.ps1
+- backend : uvicorn server:app --reload --port 8000
+- frontend : npm start
 
+# --------------------------------------------------------------------------------------------------------------------------------------------------
 Troubleshooting "Scripts are Disabled"
 If you get an error saying "running scripts is disabled on this system," Windows is blocking the activation script for security. You can fix this for your current session by running:
 
