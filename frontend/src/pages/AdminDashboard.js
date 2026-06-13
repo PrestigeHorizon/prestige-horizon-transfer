@@ -78,11 +78,16 @@ const AdminDashboard = () => {
   const [statusFilter,      setStatusFilter]      = useState('all');
   const [corridorFilter,    setCorridorFilter]    = useState('all');
   const [searchQuery,       setSearchQuery]       = useState('');
+  const [updateData, setUpdateData] = useState({
+    status: '',
+    tracking_number: '',
+    admin_notes: '',
+  });
 
   /* Modal état */
   const [editingTransfer, setEditingTransfer] = useState(null);
   const [updateLoading,   setUpdateLoading]   = useState(false);
-  const [updateData,      setUpdateData]      = useState({ status: '', admin_notes: '', exchange_rate_applied: '' });
+  /*const [updateData,      setUpdateData]      = useState({ status: '', admin_notes: '', exchange_rate_applied: '' });*/
 
   /* Modal preuve */
   const [proofModal,   setProofModal]   = useState(null); // { filename, content_type, data }
@@ -102,7 +107,15 @@ const AdminDashboard = () => {
       ]);
       setTransfers(tRes.data);
       setStats(sRes.data);
-    } catch {
+    } catch (err) {
+
+      console.error('fetchData error:', err);
+
+      if (err.response) {
+        console.error('Response status:', err.response.status);
+        console.error('Response data:', err.response.data);
+      }
+
       toast.error('Erreur lors du chargement des données');
     } finally {
       setLoading(false);

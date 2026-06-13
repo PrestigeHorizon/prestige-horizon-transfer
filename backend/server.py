@@ -61,7 +61,7 @@ CORRIDORS = {
         "to_country": "Canada",
         "from_currency": "XOF",
         "to_currency": "CAD",
-        "payment_methods": ["bank_transfer"],
+        "payment_methods": ["bank_transfer", "mtn"],
         "delivery_methods": ["interac"],
         "rate_cad_per_xof": 0.00226,
         "fee_percentage": 2.5,
@@ -76,6 +76,7 @@ PAYMENT_METHOD_LABELS = {
     "interac":       {"label": "Virement Interac / Bancaire", "icon": "bank",   "currency": "CAD"},
     "crypto_usdc":   {"label": "Crypto (USDC)",               "icon": "crypto", "currency": "USDC"},
     "bank_transfer": {"label": "Virement Bancaire",           "icon": "bank",   "currency": "XOF"},
+    "mtn":           {"label": "MTN Mobile Money",            "color": "#FFCC00", "icon": "mtn"},
 }
 
 DELIVERY_METHOD_LABELS = {
@@ -110,6 +111,7 @@ PAYMENT_INSTRUCTIONS = {
         ],
         "note": "Le taux USDC/XOF sera celui du moment de la confirmation on-chain."
     },
+    "mtn":           {"label": "MTN Mobile Money",   "color": "#FFCC00", "icon": "mtn"},
     "bank_transfer": {
         "title": "Effectuez votre virement bancaire",
         "steps": [

@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Navbar } from '@/components/Navbar';
 import { ArrowRight, Send, Shield, Clock, Smartphone, Building2, MapPin, ChevronRight, RefreshCw } from 'lucide-react';
 import logoImg from '../images/white_logo_Prestige_horizon_bg.png';
-import officeImg from '../images/phinc-office.png';
+//import officeImg from '../images/phinc-office.png';
+import logoPhinc from '../images/logo-phinc.png';
 import mtnLogo from '../images/providers/mtn-momo.png';
 import moovLogo from '../images/providers/moov-money.png';
 
@@ -238,7 +239,7 @@ const Landing = () => {
                 <div className="absolute -inset-2 bg-[#D4AF37]/5 rounded-2xl blur-xl" />
                 <div className="relative rounded-2xl overflow-hidden border border-white/10">
                   <img
-                    src={officeImg}
+                    src={logoPhinc}
                     alt="Bureau Prestige Horizon"
                     className="w-full h-[220px] object-cover"
                     data-testid="hero-office"

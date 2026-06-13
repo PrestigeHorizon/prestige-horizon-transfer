@@ -3,136 +3,66 @@ import { Toaster } from "sonner";
 import "@/App.css";
 
 // Pages
-import Landing from "@/pages/Landing";
-import Login from "@/pages/Login";
-import Register from "@/pages/Register";
-import Dashboard from "@/pages/Dashboard";
-import NewTransfer from "@/pages/NewTransfer";
+import Landing        from "@/pages/Landing";
+import Login          from "@/pages/Login";
+import Register       from "@/pages/Register";
+import Dashboard      from "@/pages/Dashboard";
+import NewTransfer    from "@/pages/NewTransfer";
 import TransferHistory from "@/pages/TransferHistory";
 import TransferDetails from "@/pages/TransferDetails";
 import AdminDashboard from "@/pages/AdminDashboard";
-import Profile from "@/pages/Profile";
+import Profile        from "@/pages/Profile";
+import TrackTransfer  from "@/pages/TrackTransfer";
 
-// Auth Provider
+// Auth
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 
-// Protected Route Component
+/* ── Loader plein écran ── */
+const FullPageLoader = () => (
+  <div className="min-h-screen flex items-center justify-center bg-[#050505]">
+    <div className="loader" />
+  </div>
+);
+
+/* ── Route protégée (authentification requise) ── */
 const ProtectedRoute = ({ children, adminOnly = false }) => {
   const { user, loading } = useAuth();
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[#050505]">
-        <div className="loader"></div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return <Navigate to="/login" replace />;
-  }
-
-  if (adminOnly && !user.is_admin) {
-    return <Navigate to="/dashboard" replace />;
-  }
-
+  if (loading) return <FullPageLoader />;
+  if (!user)   return <Navigate to="/login" replace />;
+  if (adminOnly && !user.is_admin) return <Navigate to="/dashboard" replace />;
   return children;
 };
 
-// Public Route (redirect if authenticated)
+/* ── Route publique (redirige si déjà connecté) ── */
 const PublicRoute = ({ children }) => {
   const { user, loading } = useAuth();
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[#050505]">
-        <div className="loader"></div>
-      </div>
-    );
-  }
-
-  if (user) {
-    return <Navigate to={user.is_admin ? "/admin" : "/dashboard"} replace />;
-  }
-
+  if (loading) return <FullPageLoader />;
+  if (user)    return <Navigate to={user.is_admin ? "/admin" : "/dashboard"} replace />;
   return children;
 };
 
 function AppRoutes() {
   return (
     <Routes>
-      {/* Public Routes */}
+      {/* ── Pages publiques ── */}
       <Route path="/" element={<Landing />} />
-      <Route
-        path="/login"
-        element={
-          <PublicRoute>
-            <Login />
-          </PublicRoute>
-        }
-      />
-      <Route
-        path="/register"
-        element={
-          <PublicRoute>
-            <Register />
-          </PublicRoute>
-        }
-      />
+      <Route path="/track"                element={<TrackTransfer />} />
+      <Route path="/track/:tracking_number" element={<TrackTransfer />} />
 
-      {/* Protected User Routes */}
-      <Route
-        path="/dashboard"
-        element={
-          <ProtectedRoute>
-            <Dashboard />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/new-transfer"
-        element={
-          <ProtectedRoute>
-            <NewTransfer />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/transfers"
-        element={
-          <ProtectedRoute>
-            <TransferHistory />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/transfers/:id"
-        element={
-          <ProtectedRoute>
-            <TransferDetails />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/profile"
-        element={
-          <ProtectedRoute>
-            <Profile />
-          </ProtectedRoute>
-        }
-      />
+      <Route path="/login"    element={<PublicRoute><Login    /></PublicRoute>} />
+      <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
 
-      {/* Admin Routes */}
-      <Route
-        path="/admin"
-        element={
-          <ProtectedRoute adminOnly>
-            <AdminDashboard />
-          </ProtectedRoute>
-        }
-      />
+      {/* ── Pages utilisateur protégées ── */}
+      <Route path="/dashboard"      element={<ProtectedRoute><Dashboard      /></ProtectedRoute>} />
+      <Route path="/new-transfer"   element={<ProtectedRoute><NewTransfer    /></ProtectedRoute>} />
+      <Route path="/transfers"      element={<ProtectedRoute><TransferHistory /></ProtectedRoute>} />
+      <Route path="/transfers/:id"  element={<ProtectedRoute><TransferDetails /></ProtectedRoute>} />
+      <Route path="/profile"        element={<ProtectedRoute><Profile         /></ProtectedRoute>} />
 
-      {/* Catch all */}
+      {/* ── Admin ── */}
+      <Route path="/admin" element={<ProtectedRoute adminOnly><AdminDashboard /></ProtectedRoute>} />
+
+      {/* ── Catch-all ── */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
@@ -144,8 +74,8 @@ function App() {
       <BrowserRouter>
         <AuthProvider>
           <AppRoutes />
-          <Toaster 
-            position="top-right" 
+          <Toaster
+            position="top-right"
             toastOptions={{
               style: {
                 background: '#0F0F0F',
