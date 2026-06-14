@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
+import { useAuth } from '@/context/AuthContext';
 import { Navbar } from '@/components/Navbar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,7 +18,6 @@ import {
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
-/* ─── Statuts ─── */
 const STATUS_META = {
   pending:          { label: 'En attente',    color: 'text-amber-400',  bg: 'bg-amber-400/10',  Icon: Clock },
   payment_received: { label: 'Paiement reçu', color: 'text-blue-400',   bg: 'bg-blue-400/10',   Icon: Wallet },
@@ -27,7 +27,6 @@ const STATUS_META = {
   failed:           { label: 'Échoué',        color: 'text-red-400',    bg: 'bg-red-400/10',    Icon: AlertCircle },
 };
 
-/* Transitions autorisées côté front (miroir du backend) */
 const NEXT_STATUSES = {
   pending:          ['payment_received', 'cancelled'],
   payment_received: ['processing', 'cancelled', 'failed'],
@@ -51,13 +50,11 @@ const PAYMENT_LABELS = {
 
 const fmtCAD = (n) => new Intl.NumberFormat('fr-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 }).format(n);
 const fmtXOF = (n) => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'XOF', minimumFractionDigits: 0 }).format(n);
-const fmt = (n, cur) => (cur === 'CAD' ? fmtCAD(n) : fmtXOF(n));
-
+const fmt    = (n, cur) => cur === 'CAD' ? fmtCAD(n) : fmtXOF(n);
 const fmtDate = (d) => new Date(d).toLocaleDateString('fr-CA', {
   day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit',
 });
 
-/* ── Status badge ── */
 const StatusBadge = ({ status }) => {
   const m = STATUS_META[status] || STATUS_META.pending;
   return (
@@ -68,8 +65,11 @@ const StatusBadge = ({ status }) => {
   );
 };
 
-/* ════════════════════════ */
+/* ════════════════════════════════════════════════════ */
 const AdminDashboard = () => {
+  // ✅ FIX : lire le token depuis le contexte auth (jamais de race condition)
+  const { token } = useAuth();
+
   const [transfers,         setTransfers]         = useState([]);
   const [filteredTransfers, setFilteredTransfers] = useState([]);
   const [stats,             setStats]             = useState(null);
@@ -78,27 +78,25 @@ const AdminDashboard = () => {
   const [statusFilter,      setStatusFilter]      = useState('all');
   const [corridorFilter,    setCorridorFilter]    = useState('all');
   const [searchQuery,       setSearchQuery]       = useState('');
-  const [updateData, setUpdateData] = useState({
-    status: '',
-    tracking_number: '',
-    admin_notes: '',
-  });
 
-  /* Modal état */
   const [editingTransfer, setEditingTransfer] = useState(null);
   const [updateLoading,   setUpdateLoading]   = useState(false);
-  /*const [updateData,      setUpdateData]      = useState({ status: '', admin_notes: '', exchange_rate_applied: '' });*/
+  const [updateData,      setUpdateData]      = useState({ status: '', admin_notes: '', exchange_rate_applied: '' });
 
-  /* Modal preuve */
-  const [proofModal,   setProofModal]   = useState(null); // { filename, content_type, data }
+  const [proofModal,   setProofModal]   = useState(null);
   const [proofLoading, setProofLoading] = useState(false);
 
-  const authHeader = () => {
-    const token = localStorage.getItem('token');
-    return { Authorization: `Bearer ${token}` };
-  };
+  // ✅ FIX : headers construits à partir du token du contexte (toujours à jour)
+  // Lire localStorage directement — disponible immédiatement sans attendre checkAuth
+  const authHeader = useCallback(() => {
+    const t = token || localStorage.getItem('token');
+    return { Authorization: `Bearer ${t}` };
+  }, [token]);
 
-  const fetchData = async (silent = false) => {
+  // ✅ FIX : fetchData déclenché quand le token est disponible (pas au montage à vide)
+  const fetchData = useCallback(async (silent = false) => {
+    const activeToken = token || localStorage.getItem('token');
+    if (!activeToken) return;
     if (!silent) setLoading(true); else setRefreshing(true);
     try {
       const [tRes, sRes] = await Promise.all([
@@ -108,27 +106,28 @@ const AdminDashboard = () => {
       setTransfers(tRes.data);
       setStats(sRes.data);
     } catch (err) {
-
-      console.error('fetchData error:', err);
-
-      if (err.response) {
-        console.error('Response status:', err.response.status);
-        console.error('Response data:', err.response.data);
+      const status = err.response?.status;
+      if (status === 401 || status === 403) {
+        toast.error('Session expirée — veuillez vous reconnecter');
+      } else {
+        toast.error('Erreur lors du chargement des données');
       }
-
-      toast.error('Erreur lors du chargement des données');
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [token, authHeader]);
 
-  useEffect(() => { fetchData(); }, []);
+  // Se déclenche dès que le composant monte — lit localStorage en fallback
+  useEffect(() => {
+    const t = token || localStorage.getItem('token');
+    if (t) fetchData();
+  }, [token, fetchData]);
 
   /* Filtrage */
   useEffect(() => {
     let f = [...transfers];
-    if (statusFilter !== 'all')   f = f.filter((t) => t.status === statusFilter);
+    if (statusFilter  !== 'all') f = f.filter((t) => t.status   === statusFilter);
     if (corridorFilter !== 'all') f = f.filter((t) => t.corridor === corridorFilter);
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
@@ -142,13 +141,11 @@ const AdminDashboard = () => {
     setFilteredTransfers(f);
   }, [transfers, statusFilter, corridorFilter, searchQuery]);
 
-  /* Ouvrir modal édition */
   const openEdit = (t) => {
     setEditingTransfer(t);
     setUpdateData({ status: t.status, admin_notes: t.admin_notes || '', exchange_rate_applied: '' });
   };
 
-  /* Sauvegarder */
   const handleUpdate = async () => {
     setUpdateLoading(true);
     try {
@@ -165,10 +162,13 @@ const AdminDashboard = () => {
     }
   };
 
-  /* Transition rapide (bouton inline) */
   const quickTransition = async (transferId, newStatus) => {
     try {
-      await axios.put(`${API_URL}/api/admin/transfers/${transferId}`, { status: newStatus }, { headers: authHeader() });
+      await axios.put(
+        `${API_URL}/api/admin/transfers/${transferId}`,
+        { status: newStatus },
+        { headers: authHeader() }
+      );
       toast.success(`Statut → ${STATUS_META[newStatus]?.label}`);
       fetchData(true);
     } catch (err) {
@@ -176,11 +176,13 @@ const AdminDashboard = () => {
     }
   };
 
-  /* Voir preuve de paiement */
   const viewProof = async (transferId) => {
     setProofLoading(true);
     try {
-      const { data } = await axios.get(`${API_URL}/api/transfers/${transferId}/proof`, { headers: authHeader() });
+      const { data } = await axios.get(
+        `${API_URL}/api/transfers/${transferId}/proof`,
+        { headers: authHeader() }
+      );
       setProofModal(data);
     } catch {
       toast.error('Aucune preuve de paiement disponible');
@@ -193,8 +195,9 @@ const AdminDashboard = () => {
     return (
       <div className="min-h-screen bg-[#050505]">
         <Navbar />
-        <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
           <Loader2 className="w-10 h-10 text-[#D4AF37] animate-spin" />
+          <p className="text-[#A1A1AA] text-sm">Chargement des transferts…</p>
         </div>
       </div>
     );
@@ -216,8 +219,9 @@ const AdminDashboard = () => {
             onClick={() => fetchData(true)}
             disabled={refreshing}
             className="p-2 rounded-lg border border-white/10 text-[#A1A1AA] hover:text-white hover:border-white/20 transition-all"
+            title="Actualiser"
           >
-            <RefreshCw className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-5 h-5 ${refreshing ? 'animate-spin text-[#D4AF37]' : ''}`} />
           </button>
         </div>
 
@@ -225,9 +229,9 @@ const AdminDashboard = () => {
         {stats && (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
             {[
-              { label: 'Total transferts', value: stats.total_transfers,  Icon: TrendingUp, color: 'text-[#D4AF37]', bg: 'bg-[#D4AF37]/10' },
-              { label: 'En attente',       value: stats.by_status?.pending || 0, Icon: Clock, color: 'text-amber-400', bg: 'bg-amber-400/10' },
-              { label: 'Utilisateurs',     value: stats.total_users,       Icon: Users,     color: 'text-blue-400',   bg: 'bg-blue-400/10' },
+              { label: 'Total transferts', value: stats.total_transfers,           Icon: TrendingUp,  color: 'text-[#D4AF37]', bg: 'bg-[#D4AF37]/10' },
+              { label: 'En attente',       value: stats.by_status?.pending || 0,   Icon: Clock,       color: 'text-amber-400', bg: 'bg-amber-400/10' },
+              { label: 'Utilisateurs',     value: stats.total_users,               Icon: Users,       color: 'text-blue-400',  bg: 'bg-blue-400/10'  },
               { label: 'Complétés',        value: stats.by_status?.completed || 0, Icon: CheckCircle, color: 'text-green-400', bg: 'bg-green-400/10' },
             ].map(({ label, value, Icon, color, bg }) => (
               <div key={label} className="glass-card rounded-2xl p-6">
@@ -251,7 +255,7 @@ const AdminDashboard = () => {
               <div>
                 <p className="text-[#A1A1AA] text-xs uppercase tracking-wider">Volume CAD complété</p>
                 <p className="text-xl font-bold text-green-400">{fmtCAD(stats.volume_cad_completed)}</p>
-                <p className="text-xs text-[#555]">Frais : {fmtCAD(stats.fees_cad_collected)}</p>
+                <p className="text-xs text-[#555]">Frais collectés : {fmtCAD(stats.fees_cad_collected)}</p>
               </div>
             </div>
             <div className="glass-card rounded-2xl p-6 flex items-center gap-4">
@@ -261,7 +265,7 @@ const AdminDashboard = () => {
               <div>
                 <p className="text-[#A1A1AA] text-xs uppercase tracking-wider">Volume XOF complété</p>
                 <p className="text-xl font-bold text-purple-400">{fmtXOF(stats.volume_xof_completed)}</p>
-                <p className="text-xs text-[#555]">Frais : {fmtXOF(stats.fees_xof_collected)}</p>
+                <p className="text-xs text-[#555]">Frais collectés : {fmtXOF(stats.fees_xof_collected)}</p>
               </div>
             </div>
           </div>
@@ -273,7 +277,7 @@ const AdminDashboard = () => {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#A1A1AA]" />
               <Input
-                placeholder="Rechercher par nom, téléphone, tracking…"
+                placeholder="Nom, téléphone, numéro de tracking…"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-9 bg-[#1A1A1A] border-white/10 text-white focus:border-[#D4AF37]"
@@ -286,7 +290,7 @@ const AdminDashboard = () => {
                 <SelectValue placeholder="Statut" />
               </SelectTrigger>
               <SelectContent className="bg-[#1A1A1A] border-white/10">
-                <SelectItem value="all"             className="text-white">Tous les statuts</SelectItem>
+                <SelectItem value="all" className="text-white">Tous les statuts</SelectItem>
                 {Object.entries(STATUS_META).map(([k, v]) => (
                   <SelectItem key={k} value={k} className="text-white">{v.label}</SelectItem>
                 ))}
@@ -309,23 +313,34 @@ const AdminDashboard = () => {
         <div className="glass-card rounded-2xl overflow-hidden" data-testid="admin-transfers-table">
           <div className="px-6 py-5 border-b border-white/5 flex items-center justify-between">
             <h2 className="text-white font-semibold">
-              Transferts <span className="text-[#A1A1AA] text-sm font-normal ml-1">({filteredTransfers.length})</span>
+              Transferts{' '}
+              <span className="text-[#A1A1AA] text-sm font-normal">({filteredTransfers.length})</span>
             </h2>
+            {transfers.length > 0 && filteredTransfers.length === 0 && (
+              <span className="text-[#A1A1AA] text-xs">Aucun résultat — modifiez les filtres</span>
+            )}
           </div>
 
-          {filteredTransfers.length === 0 ? (
-            <div className="text-center py-16 text-[#A1A1AA]">Aucun transfert trouvé</div>
+          {transfers.length === 0 ? (
+            <div className="text-center py-16 space-y-2">
+              <TrendingUp className="w-10 h-10 text-[#555] mx-auto" />
+              <p className="text-white font-semibold">Aucun transfert pour l&apos;instant</p>
+              <p className="text-[#A1A1AA] text-sm">Les transferts créés par les utilisateurs apparaîtront ici</p>
+            </div>
+          ) : filteredTransfers.length === 0 ? (
+            <div className="text-center py-12 text-[#A1A1AA] text-sm">
+              Aucun transfert ne correspond aux filtres sélectionnés
+            </div>
           ) : (
             <div className="divide-y divide-white/5">
               {filteredTransfers.map((t) => {
                 const nextStates = NEXT_STATUSES[t.status] || [];
                 return (
-                  <div key={t.id} className="px-6 py-4 hover:bg-white/5 transition-colors" data-testid={`admin-transfer-${t.id}`}>
+                  <div key={t.id} className="px-6 py-4 hover:bg-white/[0.02] transition-colors" data-testid={`admin-transfer-${t.id}`}>
                     <div className="flex flex-col lg:flex-row lg:items-center gap-4">
 
-                      {/* Infos principales */}
+                      {/* Infos */}
                       <div className="flex-1 grid grid-cols-2 md:grid-cols-4 gap-4">
-                        {/* Corridor + tracking */}
                         <div>
                           <p className="text-white text-sm font-medium">
                             {t.corridor === 'canada_to_benin' ? '🇨🇦→🇧🇯' : '🇧🇯→🇨🇦'}
@@ -333,8 +348,6 @@ const AdminDashboard = () => {
                           <p className="text-[#555] text-xs font-mono mt-0.5">{t.tracking_number}</p>
                           <p className="text-[#A1A1AA] text-xs mt-0.5">{fmtDate(t.created_at)}</p>
                         </div>
-
-                        {/* Expéditeur / receveur */}
                         <div>
                           <p className="text-[#A1A1AA] text-xs">Envoyeur</p>
                           <p className="text-white text-sm font-medium">{t.sender_name}</p>
@@ -347,8 +360,6 @@ const AdminDashboard = () => {
                             {t.receiver_phone || t.receiver_interac_email || t.receiver_bank_account || '—'}
                           </p>
                         </div>
-
-                        {/* Montants */}
                         <div>
                           <p className="text-[#A1A1AA] text-xs">Montants</p>
                           <p className="text-white text-sm font-semibold">{fmt(t.send_amount, t.send_currency)}</p>
@@ -363,7 +374,6 @@ const AdminDashboard = () => {
                       <div className="flex flex-wrap items-center gap-2 shrink-0">
                         <StatusBadge status={t.status} />
 
-                        {/* Bouton preuve */}
                         {t.payment_proof_filename && (
                           <button
                             onClick={() => viewProof(t.id)}
@@ -376,7 +386,6 @@ const AdminDashboard = () => {
                           </button>
                         )}
 
-                        {/* Transitions rapides */}
                         {nextStates.map((ns) => (
                           <button
                             key={ns}
@@ -388,7 +397,6 @@ const AdminDashboard = () => {
                           </button>
                         ))}
 
-                        {/* Modifier */}
                         <button
                           onClick={() => openEdit(t)}
                           className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full bg-white/5 text-[#A1A1AA] hover:text-white hover:bg-white/10 transition-colors"
@@ -400,7 +408,6 @@ const AdminDashboard = () => {
                       </div>
                     </div>
 
-                    {/* Notes admin */}
                     {t.admin_notes && (
                       <p className="mt-2 text-xs text-[#A1A1AA] bg-white/5 rounded-lg px-3 py-2">
                         📝 {t.admin_notes}
@@ -419,25 +426,23 @@ const AdminDashboard = () => {
         <DialogContent className="bg-[#0F0F0F] border-white/10 text-white max-w-lg">
           <DialogHeader>
             <DialogTitle className="text-white">
-              Modifier le transfert
-              <span className="text-[#A1A1AA] text-sm font-normal ml-2">
-                {editingTransfer?.tracking_number}
-              </span>
+              Modifier le transfert{' '}
+              <span className="text-[#A1A1AA] text-sm font-normal">{editingTransfer?.tracking_number}</span>
             </DialogTitle>
           </DialogHeader>
 
           {editingTransfer && (
             <div className="space-y-5 py-2">
-              {/* Récap */}
               <div className="bg-[#1A1A1A] rounded-xl p-4 space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-[#A1A1AA]">Envoyeur</span>
-                  <span className="text-white">{editingTransfer.sender_name}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-[#A1A1AA]">Receveur</span>
-                  <span className="text-white">{editingTransfer.receiver_name}</span>
-                </div>
+                {[
+                  { label: 'Envoyeur', value: editingTransfer.sender_name },
+                  { label: 'Receveur', value: editingTransfer.receiver_name },
+                ].map(({ label, value }) => (
+                  <div key={label} className="flex justify-between">
+                    <span className="text-[#A1A1AA]">{label}</span>
+                    <span className="text-white">{value}</span>
+                  </div>
+                ))}
                 <div className="flex justify-between">
                   <span className="text-[#A1A1AA]">Montant</span>
                   <span className="text-[#D4AF37] font-semibold">
@@ -452,7 +457,6 @@ const AdminDashboard = () => {
                 </div>
               </div>
 
-              {/* Nouveau statut */}
               <div>
                 <Label className="text-[#A1A1AA] text-sm mb-2 block">Nouveau statut</Label>
                 <Select value={updateData.status} onValueChange={(v) => setUpdateData((p) => ({ ...p, status: v }))}>
@@ -460,7 +464,6 @@ const AdminDashboard = () => {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="bg-[#1A1A1A] border-white/10">
-                    {/* Statut actuel toujours disponible */}
                     <SelectItem value={editingTransfer.status} className="text-white">
                       {STATUS_META[editingTransfer.status]?.label} (actuel)
                     </SelectItem>
@@ -473,7 +476,6 @@ const AdminDashboard = () => {
                 </Select>
               </div>
 
-              {/* Taux appliqué (visible si processing → completed) */}
               {updateData.status === 'completed' && (
                 <div>
                   <Label className="text-[#A1A1AA] text-sm mb-2 block">
@@ -489,13 +491,12 @@ const AdminDashboard = () => {
                 </div>
               )}
 
-              {/* Notes admin */}
               <div>
                 <Label className="text-[#A1A1AA] text-sm mb-2 block">Notes admin</Label>
                 <Textarea
                   value={updateData.admin_notes}
                   onChange={(e) => setUpdateData((p) => ({ ...p, admin_notes: e.target.value }))}
-                  placeholder="Décaissement effectué le… / Reçu vérifié…"
+                  placeholder="Décaissement effectué le… / Preuve vérifiée…"
                   className="bg-[#1A1A1A] border-white/10 text-white resize-none focus:border-[#D4AF37]"
                   rows={3}
                   data-testid="edit-notes"
@@ -510,7 +511,7 @@ const AdminDashboard = () => {
             </Button>
             <Button
               onClick={handleUpdate}
-              disabled={updateLoading || updateData.status === editingTransfer?.status && !updateData.admin_notes}
+              disabled={updateLoading || (updateData.status === editingTransfer?.status && !updateData.admin_notes)}
               className="bg-[#D4AF37] text-black hover:bg-[#B59326] font-semibold"
               data-testid="save-update"
             >
@@ -531,7 +532,12 @@ const AdminDashboard = () => {
           </DialogHeader>
           {proofModal && (
             <div className="space-y-4">
-              <p className="text-[#A1A1AA] text-sm">{proofModal.filename} · {proofModal.uploaded_at ? new Date(proofModal.uploaded_at).toLocaleString('fr-CA') : ''}</p>
+              <p className="text-[#A1A1AA] text-sm">
+                {proofModal.filename}
+                {proofModal.uploaded_at && (
+                  <> · {new Date(proofModal.uploaded_at).toLocaleString('fr-CA')}</>
+                )}
+              </p>
               {proofModal.content_type?.startsWith('image/') ? (
                 <img
                   src={`data:${proofModal.content_type};base64,${proofModal.data}`}
@@ -541,7 +547,7 @@ const AdminDashboard = () => {
               ) : (
                 <div className="p-6 bg-[#1A1A1A] rounded-xl text-center space-y-3">
                   <ExternalLink className="w-10 h-10 text-[#D4AF37] mx-auto" />
-                  <p className="text-white text-sm">Fichier PDF — cliquez pour télécharger</p>
+                  <p className="text-white text-sm">Fichier PDF</p>
                   <a
                     href={`data:${proofModal.content_type};base64,${proofModal.data}`}
                     download={proofModal.filename}

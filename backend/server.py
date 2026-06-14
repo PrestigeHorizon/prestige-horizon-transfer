@@ -61,7 +61,7 @@ CORRIDORS = {
         "to_country": "Canada",
         "from_currency": "XOF",
         "to_currency": "CAD",
-        "payment_methods": ["bank_transfer", "mtn"],
+        "payment_methods": ["bank_transfer"],
         "delivery_methods": ["interac"],
         "rate_cad_per_xof": 0.00226,
         "fee_percentage": 2.5,
@@ -76,7 +76,6 @@ PAYMENT_METHOD_LABELS = {
     "interac":       {"label": "Virement Interac / Bancaire", "icon": "bank",   "currency": "CAD"},
     "crypto_usdc":   {"label": "Crypto (USDC)",               "icon": "crypto", "currency": "USDC"},
     "bank_transfer": {"label": "Virement Bancaire",           "icon": "bank",   "currency": "XOF"},
-    "mtn":           {"label": "MTN Mobile Money",            "color": "#FFCC00", "icon": "mtn"},
 }
 
 DELIVERY_METHOD_LABELS = {
@@ -111,7 +110,6 @@ PAYMENT_INSTRUCTIONS = {
         ],
         "note": "Le taux USDC/XOF sera celui du moment de la confirmation on-chain."
     },
-    "mtn":           {"label": "MTN Mobile Money",   "color": "#FFCC00", "icon": "mtn"},
     "bank_transfer": {
         "title": "Effectuez votre virement bancaire",
         "steps": [
@@ -219,10 +217,10 @@ class TransferResponse(BaseModel):
     receiver_bank_account: Optional[str] = None
     receiver_bank_iban: Optional[str] = None
     receiver_interac_email: Optional[str] = None
-    sender_name: str
-    sender_email: str
-    sender_phone: str
-    sender_country: str
+    sender_name: str = ""
+    sender_email: str = ""
+    sender_phone: str = ""
+    sender_country: str = ""
     status: str
     status_label: Optional[str] = None
     status_color: Optional[str] = None
@@ -711,9 +709,7 @@ async def update_rate(corridor_key: str, body: RateUpdate, admin: dict = Depends
         CORRIDORS[corridor_key]["rate_cad_per_xof"] = body.rate
     return {"message": "Taux mis à jour", "corridor": corridor_key, "rate": body.rate}
 
-#to delete later, juste pour initialiser un compte admin
 @api_router.post("/admin/create-admin")
-
 async def create_admin_user():
     existing = await db.users.find_one({"email": "admin@prestigemoneytransfer.ca"})
     if existing:
@@ -732,6 +728,35 @@ async def create_admin_user():
     }
     await db.users.insert_one(doc)
     return {"message": "Admin créé", "email": doc["email"], "password": "PrestigeAdmin2024!"}
+
+
+@api_router.post("/admin/migrate-transfers")
+async def migrate_old_transfers(admin: dict = Depends(get_admin_user)):
+    """Migre les anciens transferts qui manquent de champs sender_* ou corridor."""
+    result = await db.transfers.update_many(
+        {"sender_name": {"$exists": False}},
+        {"$set": {
+            "sender_name": "Inconnu",
+            "sender_email": "",
+            "sender_phone": "",
+            "sender_country": "",
+        }}
+    )
+    # Corriger aussi les transferts sans corridor (anciens providers)
+    result2 = await db.transfers.update_many(
+        {"corridor": {"$exists": False}},
+        {"$set": {"corridor": "canada_to_benin"}}
+    )
+    # Corriger send_currency / receive_currency manquants
+    result3 = await db.transfers.update_many(
+        {"send_currency": {"$exists": False}},
+        {"$set": {"send_currency": "CAD", "receive_currency": "XOF"}}
+    )
+    return {
+        "migrated_sender_fields": result.modified_count,
+        "migrated_corridor": result2.modified_count,
+        "migrated_currency": result3.modified_count,
+    }
 
 # ============================================================
 # HEALTH

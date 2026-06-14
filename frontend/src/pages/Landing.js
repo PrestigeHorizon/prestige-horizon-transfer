@@ -383,7 +383,7 @@ const Landing = () => {
             <img src={logoImg} alt="Prestige Horizon" className="w-36 h-auto object-contain opacity-80" />
             <div className="text-center md:text-right space-y-1 text-[#A1A1AA] text-sm">
               <p>© {new Date().getFullYear()} Prestige Horizon Inc. Tous droits réservés.</p>
-              <p>Enregistré auprès du CANAFE · Transferts Canada ↔ Bénin</p>
+              <p> Prestige Money Transfer - Transferts d'Argent Canada ↔ Bénin</p>
             </div>
           </div>
         </div>
