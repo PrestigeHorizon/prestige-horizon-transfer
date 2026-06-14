@@ -87,15 +87,15 @@ const AdminDashboard = () => {
   const [proofLoading, setProofLoading] = useState(false);
 
   // ✅ FIX : headers construits à partir du token du contexte (toujours à jour)
-  // Lire localStorage directement — disponible immédiatement sans attendre checkAuth
+  // Lire sessionStorage directement — disponible immédiatement sans attendre checkAuth
   const authHeader = useCallback(() => {
-    const t = token || localStorage.getItem('token');
+    const t = token || sessionStorage.getItem('token');
     return { Authorization: `Bearer ${t}` };
   }, [token]);
 
   // ✅ FIX : fetchData déclenché quand le token est disponible (pas au montage à vide)
   const fetchData = useCallback(async (silent = false) => {
-    const activeToken = token || localStorage.getItem('token');
+    const activeToken = token || sessionStorage.getItem('token');
     if (!activeToken) return;
     if (!silent) setLoading(true); else setRefreshing(true);
     try {
@@ -118,9 +118,9 @@ const AdminDashboard = () => {
     }
   }, [token, authHeader]);
 
-  // Se déclenche dès que le composant monte — lit localStorage en fallback
+  // Se déclenche dès que le composant monte — lit sessionStorage en fallback
   useEffect(() => {
-    const t = token || localStorage.getItem('token');
+    const t = token || sessionStorage.getItem('token');
     if (t) fetchData();
   }, [token, fetchData]);
 

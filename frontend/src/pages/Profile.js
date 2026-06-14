@@ -53,7 +53,7 @@ const Profile = () => {
     if (!newPhone.trim()) return;
     setPhoneLoading(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       await axios.put(`${API_URL}/api/auth/update-phone`, { phone: newPhone }, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -82,7 +82,7 @@ const Profile = () => {
     }
     setPwLoading(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       await axios.put(`${API_URL}/api/auth/change-password`, {
         old_password: pwData.old_password,
         new_password: pwData.new_password,

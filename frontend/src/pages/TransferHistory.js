@@ -75,7 +75,7 @@ const TransferHistory = () => {
 
   const fetchTransfers = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       const { data } = await axios.get(`${API_URL}/api/transfers`, {
         headers: { Authorization: `Bearer ${token}` },
       });

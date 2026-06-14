@@ -13,7 +13,7 @@ if (!API_URL) {
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [token, setToken] = useState(localStorage.getItem('token'));
+  const [token, setToken] = useState(sessionStorage.getItem('token'));
   const [loading, setLoading] = useState(true);
 
   // Configure axios defaults
@@ -50,7 +50,7 @@ export const AuthProvider = ({ children }) => {
     });
     
     const { token: newToken, user: userData } = response.data;
-    localStorage.setItem('token', newToken);
+    sessionStorage.setItem('token', newToken);
     setToken(newToken);
     setUser(userData);
     return userData;
@@ -60,14 +60,14 @@ export const AuthProvider = ({ children }) => {
     const response = await axios.post(`${API_URL}/api/auth/register`, userData);
     
     const { token: newToken, user: newUser } = response.data;
-    localStorage.setItem('token', newToken);
+    sessionStorage.setItem('token', newToken);
     setToken(newToken);
     setUser(newUser);
     return newUser;
   };
 
   const logout = () => {
-    localStorage.removeItem('token');
+    sessionStorage.removeItem('token');
     setToken(null);
     setUser(null);
   };

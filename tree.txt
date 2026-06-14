@@ -59353,8 +59353,8 @@ C:.
 |   |   |       |   setTimeoutUnref.js
 |   |   |       |   Stats.d.ts
 |   |   |       |   Stats.js
-|   |   |       |   volume-localstorage.d.ts
-|   |   |       |   volume-localstorage.js
+|   |   |       |   volume-sessionStorage.d.ts
+|   |   |       |   volume-sessionStorage.js
 |   |   |       |   volume.d.ts
 |   |   |       |   volume.js
 |   |   |       |   

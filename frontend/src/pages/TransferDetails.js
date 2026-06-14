@@ -141,7 +141,7 @@ const TransferDetails = () => {
 
   const fetchTransfer = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       const { data } = await axios.get(`${API_URL}/api/transfers/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -161,7 +161,7 @@ const TransferDetails = () => {
     if (!proofFile) return;
     setProofUploading(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       const fd = new FormData();
       fd.append('file', proofFile);
       await axios.post(`${API_URL}/api/transfers/${id}/proof`, fd, {

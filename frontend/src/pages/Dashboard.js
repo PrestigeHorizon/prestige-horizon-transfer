@@ -69,7 +69,7 @@ const Dashboard = () => {
   const fetchTransfers = async (silent = false) => {
     if (!silent) setLoading(true); else setRefreshing(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       const { data } = await axios.get(`${API_URL}/api/transfers`, {
         headers: { Authorization: `Bearer ${token}` },
       });

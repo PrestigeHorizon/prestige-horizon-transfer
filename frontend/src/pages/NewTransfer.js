@@ -171,7 +171,7 @@ const NewTransfer = () => {
   const handleSubmit = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       const payload = {
         corridor:                form.corridor,
         payment_method:          form.payment_method,
@@ -204,7 +204,7 @@ const NewTransfer = () => {
     if (!proofFile || !created) return;
     setProofUploading(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       const fd = new FormData();
       fd.append('file', proofFile);
       await axios.post(`${API_URL}/api/transfers/${created.id}/proof`, fd, {
