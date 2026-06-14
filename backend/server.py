@@ -14,6 +14,7 @@ import uuid
 from datetime import datetime, timezone, timedelta
 import jwt
 import bcrypt
+import re
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -61,7 +62,7 @@ CORRIDORS = {
         "to_country": "Canada",
         "from_currency": "XOF",
         "to_currency": "CAD",
-        "payment_methods": ["bank_transfer"],
+        "payment_methods": ["bank_transfer", "mtn", "moov"],
         "delivery_methods": ["interac"],
         "rate_cad_per_xof": 0.00226,
         "fee_percentage": 2.5,
@@ -76,6 +77,8 @@ PAYMENT_METHOD_LABELS = {
     "interac":       {"label": "Virement Interac / Bancaire", "icon": "bank",   "currency": "CAD"},
     "crypto_usdc":   {"label": "Crypto (USDC)",               "icon": "crypto", "currency": "USDC"},
     "bank_transfer": {"label": "Virement Bancaire",           "icon": "bank",   "currency": "XOF"},
+    "mtn":           {"label": "MoMo",                        "color": "#FFCC00", "icon": "mtn"},
+    "moov":          {"label": "Moov Money",                  "color": "#00a51b", "icon": "moov"},
 }
 
 DELIVERY_METHOD_LABELS = {
@@ -120,6 +123,26 @@ PAYMENT_INSTRUCTIONS = {
             "Téléchargez votre reçu de virement ci-dessous."
         ],
         "note": "Les virements béninois sont traités sous 1-3 jours ouvrables."
+    },
+    "mtn": {
+        "title": "Effectuez votre paiement MTN Mobile Money",
+        "steps": [
+            "Numéro marchand : 97 XX XX XX",
+            "Montant : {total_charged} XOF",
+            "Référence : {tracking_number}",
+            "Téléchargez la preuve de paiement ci-dessous."
+        ],
+        "note": "Votre transfert sera traité après confirmation du paiement MTN Mobile Money."
+    },
+    "moov": {
+        "title": "Effectuez votre paiement Moov Money",
+        "steps": [
+            "Numéro marchand : 96 XX XX XX",
+            "Montant : {total_charged} XOF",
+            "Référence : {tracking_number}",
+            "Téléchargez la preuve de paiement ci-dessous."
+        ],
+        "note": "Votre transfert sera traité après confirmation du paiement Moov Money."
     }
 }
 
@@ -183,7 +206,7 @@ class TransferCreate(BaseModel):
     send_amount: float                      # montant dans la devise source
     receiver_name: str
     receiver_phone: Optional[str] = None   # obligatoire si MTN/Moov
-    receiver_mobile_network: Optional[str] = None  # "mtn" | "moov" (pour Mobile Money)
+    receiver_mobile_network: Optional[str] = None  # Ce champ est rempli automatiquement pour les numéros béninois (MTN/Moov) après validation
     receiver_bank_name: Optional[str] = None
     receiver_bank_account: Optional[str] = None
     receiver_bank_iban: Optional[str] = None
@@ -212,7 +235,6 @@ class TransferResponse(BaseModel):
     exchange_rate: float
     receiver_name: str
     receiver_phone: Optional[str] = None
-    receiver_mobile_network: Optional[str] = None
     receiver_bank_name: Optional[str] = None
     receiver_bank_account: Optional[str] = None
     receiver_bank_iban: Optional[str] = None
@@ -232,6 +254,7 @@ class TransferResponse(BaseModel):
     next_statuses: Optional[List[str]] = None
     created_at: str
     updated_at: str
+    receiver_mobile_network: Optional[str] = None
 
 class RateUpdate(BaseModel):
     rate: float
@@ -447,11 +470,27 @@ async def create_transfer(transfer: TransferCreate, user: dict = Depends(get_cur
         raise HTTPException(status_code=400, detail="Numéro de compte bancaire requis pour virement bancaire")
     if transfer.delivery_method == "interac" and not transfer.receiver_interac_email:
         raise HTTPException(status_code=400, detail="Email Interac du receveur requis")
+    if transfer.delivery_method == "interac":
+        email_regex = r"^[^@]+@[^@]+\.[^@]+$"
+        if not re.match(email_regex, transfer.receiver_interac_email):
+            raise HTTPException(
+                status_code=400,
+                detail="Adresse courriel Interac invalide / Invalid Email Address for Interac"
+            )
 
     min_amt = c.get("min_amount_cad") or c.get("min_amount_xof")
     max_amt = c.get("max_amount_cad") or c.get("max_amount_xof")
     if transfer.send_amount < min_amt or transfer.send_amount > max_amt:
         raise HTTPException(status_code=400, detail=f"Montant entre {min_amt} et {max_amt}")
+
+    receiver_mobile_network = None
+    if transfer.delivery_method in ["mtn", "moov"]:
+        validation = validate_benin_mobile_number(
+            transfer.receiver_phone,
+            transfer.delivery_method
+        )
+        transfer.receiver_phone = validation["normalized_phone"]
+        receiver_mobile_network = validation["network"]
 
     calc = calculate_transfer(transfer.corridor, transfer.send_amount)
     transfer_id = str(uuid.uuid4())
@@ -477,7 +516,7 @@ async def create_transfer(transfer: TransferCreate, user: dict = Depends(get_cur
         "exchange_rate": calc["exchange_rate"],
         "receiver_name": transfer.receiver_name,
         "receiver_phone": transfer.receiver_phone,
-        "receiver_mobile_network": transfer.receiver_mobile_network,
+        "receiver_mobile_network": receiver_mobile_network,
         "receiver_bank_name": transfer.receiver_bank_name,
         "receiver_bank_account": transfer.receiver_bank_account,
         "receiver_bank_iban": transfer.receiver_bank_iban,
@@ -493,7 +532,7 @@ async def create_transfer(transfer: TransferCreate, user: dict = Depends(get_cur
         "payment_proof_filename": None,
         "payment_instructions": payment_instructions,
         "created_at": now,
-        "updated_at": now
+        "updated_at": now,
     }
     await db.transfers.insert_one(doc)
     return TransferResponse(**enrich_transfer(doc))
@@ -591,6 +630,7 @@ async def track_transfer(tracking_number: str):
         "created_at": transfer["created_at"],
         "updated_at": transfer["updated_at"],
         "estimated_time": CORRIDORS.get(transfer["corridor"], {}).get("estimated_time", ""),
+        "receiver_mobile_network": transfer.get("receiver_mobile_network"),
     }
 
 # ============================================================
@@ -796,3 +836,68 @@ async def shutdown_db_client():
 @app.get("/")
 def read_root():
     return {"message": "Prestige Money Transfer — Backend v2.0"}
+
+MTN_PREFIXES = {
+    "0194", "0195", "0196",
+    "0197", "0198", "0199"
+}
+
+MOOV_PREFIXES = {
+    "0140", "0141", "0142",
+    "0143", "0144", "0145",
+    "0146", "0147", "0148",
+    "0149"
+}
+
+def validate_benin_mobile_number(phone: str, network: str = None):
+    """
+    Validation des numéros béninois.
+    Formats acceptés :
+    +2290197123456
+    2290197123456
+    0197123456
+    97123456
+    """
+
+    if not phone:
+        raise HTTPException(
+            status_code=400,
+            detail="Numéro de téléphone requis"
+        )
+
+    phone = re.sub(r"\s+", "", phone)
+
+    if phone.startswith("+229"):
+        phone = phone[4:]
+    elif phone.startswith("229"):
+        phone = phone[3:]
+
+    # Ancien format 8 chiffres
+    if len(phone) == 8:
+        phone = "01" + phone
+
+    if not re.fullmatch(r"01\d{8}", phone):
+        raise HTTPException(
+            status_code=400,
+            detail="Numéro béninois invalide"
+        )
+
+    prefix = phone[:4]
+
+    detected_network = None
+
+    if prefix in MTN_PREFIXES:
+        detected_network = "mtn"
+    elif prefix in MOOV_PREFIXES:
+        detected_network = "moov"
+
+    if network and detected_network and network != detected_network:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Le numéro appartient au réseau {detected_network.upper()} et non {network.upper()}"
+        )
+
+    return {
+        "normalized_phone": f"+229{phone}",
+        "network": detected_network
+    }
