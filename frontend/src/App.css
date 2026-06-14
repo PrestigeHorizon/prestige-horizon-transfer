@@ -22,6 +22,7 @@
     right: 0;
     bottom: 0;
     background-image: url('./images/background.png');
+    /*background: linear-gradient(135deg, #0a1a12 0%, #1f3d35 100%);*/
     background-size: cover;
     background-position: center;
     opacity: 0.15;
@@ -35,9 +36,11 @@
     left: 0;
     right: 0;
     z-index: 50;
-    background: rgba(5, 5, 5, 0.9);
+    /*background: rgba(5, 5, 5, 0.9);*/
+    background: linear-gradient(135deg, #0a1a12 0%, #c9982e 100%);
     backdrop-filter: blur(12px);
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    height: 75px;
 }
 
 /* Dashboard cards */

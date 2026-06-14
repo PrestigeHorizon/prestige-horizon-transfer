@@ -40,16 +40,24 @@ export const Navbar = () => {
   return (
     <nav className="navbar" data-testid="navbar">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          {/* Logo */}
-          <Link to={user ? (user.is_admin ? '/admin' : '/dashboard') : '/'} className="flex items-center gap-3" data-testid="nav-logo">
-            <img
-              src={LOGO_URL}
-              alt="Prestige Horizon"
-              className="relative z-10 w-20 h-20 object-contain animate-fade-in"
-              data-testid="hero-logo"
-            />
-          </Link>
+        {/* La navbar fait 80px (h-20) et centre verticalement tout le monde */}
+        <div className="flex items-center justify-between h-20">
+
+          {/* Conteneur du Logo : on lui retire les contraintes de hauteur */}
+          <div className="flex items-center h-full">
+            <Link
+              to={user ? (user.is_admin ? '/admin' : '/dashboard') : '/'}
+              className="flex items-center gap-3"
+              data-testid="nav-logo"
+            >
+              <img
+                src={LOGO_URL}
+                alt="Prestige Horizon"
+                className="relative z-10 w-[105px] h-[105px] object-contain animate-fade-in"
+                data-testid="hero-logo"
+              />
+            </Link>
+          </div>
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-6">
@@ -59,8 +67,8 @@ export const Navbar = () => {
                 to={link.path}
                 data-testid={`nav-link-${link.label.toLowerCase().replace(' ', '-')}`}
                 className={`flex items-center gap-2 px-3 py-2 text-sm font-medium transition-colors duration-200 ${isActive(link.path)
-                    ? 'text-[#D4AF37]'
-                    : 'text-[#A1A1AA] hover:text-white'
+                  ? 'text-[#D4AF37]'
+                  : 'text-[#A1A1AA] hover:text-white'
                   }`}
               >
                 <link.icon className="w-4 h-4" />
