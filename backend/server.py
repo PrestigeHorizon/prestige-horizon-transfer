@@ -15,21 +15,23 @@ from datetime import datetime, timezone, timedelta
 import jwt
 import bcrypt
 import re
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(title="Prestige Money Transfer API")
 
+origins = [
+    "https://prestige-horizon-transfer.onrender.com",
+    "http://localhost:3000",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=os.environ.get(
-        "CORS_ORIGINS",
-        "http://localhost:3000"
-    ).split(","),
+    allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["*"],  # Crucial : autorise OPTIONS, POST, GET, PUT, DELETE
+    allow_headers=["*"],  # Crucial : autorise Content-Type, Authorization, etc.
 )
-
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
