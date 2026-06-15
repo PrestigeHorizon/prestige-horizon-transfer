@@ -15,6 +15,14 @@ from datetime import datetime, timezone, timedelta
 import jwt
 import bcrypt
 import re
+from flask import Flask
+from flask_cors import CORS  # 1. Importez Flask-CORS
+
+app = Flask(__name__)
+CORS(app, origins=[
+    "https://prestige-horizon-transfer.onrender.com", # remote
+    "http://localhost:3000"  # local
+])
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
