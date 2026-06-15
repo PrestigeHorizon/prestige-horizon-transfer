@@ -18,21 +18,20 @@ import re
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware  # importer le middleware FastAPI
 
-# Assurez-vous que votre instance FastAPI est bien définie
-app = FastAPI() 
+app = FastAPI()  # Création de l'application
 
-# Domaines autorisés
+# Ajout IMMÉDIAT du middleware CORS
 origins = [
-    "https://prestige-horizon-transfer.onrender.com",  # frontend Render
-    "http://localhost:3000",                           # frontend local React
+    "https://prestige-horizon-transfer.onrender.com",
+    "http://localhost:3000",
 ]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["*"],  # Autorise toutes les méthodes (POST, GET, OPTIONS, etc.)
-    allow_headers=["*"],  # Autorise tous les en-têtes (Content-Type, Authorization, etc.)
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 ROOT_DIR = Path(__file__).parent
