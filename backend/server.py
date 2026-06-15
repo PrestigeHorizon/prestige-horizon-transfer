@@ -15,14 +15,25 @@ from datetime import datetime, timezone, timedelta
 import jwt
 import bcrypt
 import re
-from flask import Flask
-from flask_cors import CORS  # 1. Importez Flask-CORS
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware  # importer le middleware FastAPI
 
-app = Flask(__name__)
-CORS(app, origins=[
-    "https://prestige-horizon-transfer.onrender.com", # remote
-    "http://localhost:3000"  # local
-])
+# Assurez-vous que votre instance FastAPI est bien définie
+app = FastAPI() 
+
+# Domaines autorisés
+origins = [
+    "https://prestige-horizon-transfer.onrender.com",  # frontend Render
+    "http://localhost:3000",                           # frontend local React
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],  # Autorise toutes les méthodes (POST, GET, OPTIONS, etc.)
+    allow_headers=["*"],  # Autorise tous les en-têtes (Content-Type, Authorization, etc.)
+)
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
