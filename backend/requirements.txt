@@ -3,6 +3,7 @@ uvicorn[standard]
 motor
 python-dotenv
 pyjwt
+python-multipart
 bcrypt
 email-validator
 pydantic[email]
