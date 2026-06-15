@@ -15,24 +15,21 @@ from datetime import datetime, timezone, timedelta
 import jwt
 import bcrypt
 import re
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware  # importer le middleware FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
-app = FastAPI()  # Création de l'application
-
-# Ajout IMMÉDIAT du middleware CORS
-origins = [
-    "https://prestige-horizon-transfer.onrender.com",
-    "http://localhost:3000",
-]
+app = FastAPI(title="Prestige Money Transfer API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=os.environ.get(
+        "CORS_ORIGINS",
+        "http://localhost:3000"
+    ).split(","),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -47,7 +44,6 @@ JWT_EXPIRATION_HOURS = 24
 
 security = HTTPBearer()
 
-app = FastAPI(title="Prestige Money Transfer API")
 api_router = APIRouter(prefix="/api")
 
 logger = logging.getLogger(__name__)
@@ -834,13 +830,6 @@ async def health():
 
 app.include_router(api_router)
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_credentials=True,
-    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 logging.basicConfig(
     level=logging.INFO,
