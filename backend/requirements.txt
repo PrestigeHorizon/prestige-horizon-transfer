@@ -6,3 +6,5 @@ pyjwt
 bcrypt
 email-validator
 pydantic[email]
+fastapi==0.110.0
+uvicorn==0.28.0
