@@ -63,3 +63,5 @@ Git Bash / Linux / macOS: source .venv/bin/activate
 Quick Access
 Admin Login: admin@prestigehorizon.com / admin123
 Users: Can register and start sending transfers immediately
+
+To create admin user : curl -X POST http://localhost:8001/api/admin/create-admin
