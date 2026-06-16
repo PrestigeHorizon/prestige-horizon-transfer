@@ -58,7 +58,7 @@ const Register = () => {
   const selectedCountry = COUNTRIES.find((c) => c.value === formData.country);
 
   return (
-    <div className="min-h-screen bg-[#050505] flex" data-testid="register-page">
+    <div className="registration min-h-screen bg-[#050505] flex" data-testid="register-page">
 
       {/* ── Panneau gauche décoratif ── */}
       <div className="hidden lg:flex w-1/2 bg-[#0A0A0A] items-center justify-center relative overflow-hidden">

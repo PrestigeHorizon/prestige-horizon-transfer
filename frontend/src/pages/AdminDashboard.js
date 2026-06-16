@@ -204,7 +204,7 @@ const AdminDashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#050505]" data-testid="admin-dashboard">
+    <div className="adminDashboard min-h-screen bg-[#050505]" data-testid="admin-dashboard">
       <Navbar />
 
       <main className="pt-24 pb-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
@@ -213,7 +213,7 @@ const AdminDashboard = () => {
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl font-bold text-white">Admin Dashboard</h1>
-            <p className="text-[#A1A1AA] mt-1">Gestion des transferts Prestige Money Transfer</p>
+            <p className="text-white mt-1">Gestion - Prestige Money Transfer</p>
           </div>
           <button
             onClick={() => fetchData(true)}
@@ -255,7 +255,7 @@ const AdminDashboard = () => {
               <div>
                 <p className="text-[#A1A1AA] text-xs uppercase tracking-wider">Volume CAD complété</p>
                 <p className="text-xl font-bold text-green-400">{fmtCAD(stats.volume_cad_completed)}</p>
-                <p className="text-xs text-[#555]">Frais collectés : {fmtCAD(stats.fees_cad_collected)}</p>
+                <p className="text-xs text-white">Frais collectés : {fmtCAD(stats.fees_cad_collected)}</p>
               </div>
             </div>
             <div className="glass-card rounded-2xl p-6 flex items-center gap-4">
@@ -265,7 +265,7 @@ const AdminDashboard = () => {
               <div>
                 <p className="text-[#A1A1AA] text-xs uppercase tracking-wider">Volume XOF complété</p>
                 <p className="text-xl font-bold text-purple-400">{fmtXOF(stats.volume_xof_completed)}</p>
-                <p className="text-xs text-[#555]">Frais collectés : {fmtXOF(stats.fees_xof_collected)}</p>
+                <p className="text-xs text-white">Frais collectés : {fmtXOF(stats.fees_xof_collected)}</p>
               </div>
             </div>
           </div>
