@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "sonner";
 import "@/App.css";
+import { useState, useEffect } from 'react';
 
 // Pages
 import Landing        from "@/pages/Landing";
@@ -42,6 +43,14 @@ const PublicRoute = ({ children }) => {
 };
 
 function AppRoutes() {
+  // On synchronise l'état global dès le départ avec le localStorage
+  const [lang, setLang] = useState(() => localStorage.getItem('prestige_lang') || 'fr');
+
+  // Met à jour le localStorage si la langue change depuis n'importe où (comme la Navbar)
+  useEffect(() => {
+    localStorage.setItem('prestige_lang', lang);
+  }, [lang]);
+
   return (
     <Routes>
       {/* ── Pages publiques ── */}
@@ -49,11 +58,17 @@ function AppRoutes() {
       <Route path="/track"                element={<TrackTransfer />} />
       <Route path="/track/:tracking_number" element={<TrackTransfer />} />
 
-      <Route path="/login"    element={<PublicRoute><Login    /></PublicRoute>} />
+      {/* PublicRoute ajoutée autour de Login pour éviter les conflits d'états */}
+      <Route path="/login" element={<PublicRoute><Login onLangChange={setLang} /></PublicRoute>} />
       <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
 
       {/* ── Pages utilisateur protégées ── */}
-      <Route path="/dashboard"      element={<ProtectedRoute><Dashboard      /></ProtectedRoute>} />
+      {/* Réintégration essentielle de <ProtectedRoute> autour du Dashboard */}
+      <Route path="/dashboard" element={
+        <ProtectedRoute>
+          <Dashboard lang={lang} setLang={setLang} />
+        </ProtectedRoute>
+      } />
       <Route path="/new-transfer"   element={<ProtectedRoute><NewTransfer    /></ProtectedRoute>} />
       <Route path="/transfers"      element={<ProtectedRoute><TransferHistory /></ProtectedRoute>} />
       <Route path="/transfers/:id"  element={<ProtectedRoute><TransferDetails /></ProtectedRoute>} />

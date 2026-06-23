@@ -1,18 +1,17 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { Eye, EyeOff, Mail, Lock, ArrowLeft } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, ArrowLeft, Globe } from 'lucide-react';
 import logoImg from '../images/white_logo_Prestige_horizon_bg.png';
 import officeBg from '../images/amazone2.jpg';
-import React, { useEffect } from "react";
+import React from "react";
 
 const LOGO_URL = logoImg;
 
-// Dictionnaire de traduction local pour la page Login
 const translations = {
   fr: {
     backHome: 'Retour à l\'accueil',
@@ -46,29 +45,23 @@ const translations = {
   }
 };
 
-// On récupère 'lang' depuis les props (fourni par votre routeur ou parent d'état)
-const Login = () => {
+// Optionnel : On peut recevoir syncLangFromLogin pour mettre à jour l'état global immédiatement au changement
+const Login = ({ onLangChange }) => {
+  // Initialise avec le localStorage s'il existe, sinon 'fr'
+  const [lang, setLang] = useState(() => localStorage.getItem('prestige_lang') || 'fr');
+  const t = translations[lang] || translations.fr;
 
   const { login } = useAuth();
   const navigate = useNavigate();
 
-  const [lang, setLang] = useState(() => {
-    return localStorage.getItem('prestige_lang') || 'fr';
-  });
-
   useEffect(() => {
     localStorage.setItem('prestige_lang', lang);
-  }, [lang]);
+    if (onLangChange) onLangChange(lang); // Alerte le parent du changement
+  }, [lang, onLangChange]);
 
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-  });
-
-  // Sélection des textes selon la langue active
-  const t = translations[lang] || translations.fr;
+  const [formData, setFormData] = useState({ email: '', password: '' });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -87,7 +80,19 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#050505] flex" data-testid="login-page">
+    <div className="min-h-screen bg-[#050505] flex relative" data-testid="login-page">
+      
+      {/* Sélecteur de langue discret en haut à droite du formulaire */}
+      <div className="absolute top-6 left-6 lg:left-auto lg:right-[52%] z-20">
+        <button
+          onClick={() => setLang(lang === 'fr' ? 'en' : 'fr')}
+          className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[#A1A1AA] hover:text-[#D4AF37] border border-white/10 hover:border-[#D4AF37]/30 px-3 py-1.5 rounded-full bg-[#111]/80 backdrop-blur transition-all"
+        >
+          <Globe className="w-3.5 h-3.5" />
+          {lang === 'fr' ? 'EN' : 'FR'}
+        </button>
+      </div>
+
       {/* Left Side - Form */}
       <div className="w-full lg:w-1/2 flex flex-col justify-center px-8 sm:px-12 lg:px-20 py-12">
         <Link
@@ -101,25 +106,14 @@ const Login = () => {
 
         <div className="max-w-md w-full mx-auto lg:mx-0">
           <div className="mb-10">
-            <img
-              src={LOGO_URL}
-              alt="Prestige Horizon"
-              className="w-50 md:w-58 h-auto object-contain"
-            />
-            <h1 className="text-3xl font-bold text-white mb-2">
-              {t.welcome}
-            </h1>
-            <p className="text-[#A1A1AA]">
-              {t.subtitle}
-            </p>
+            <img src={LOGO_URL} alt="Prestige Horizon" className="w-50 md:w-58 h-auto object-contain" />
+            <h1 className="text-3xl font-bold text-white mb-2 mt-4">{t.welcome}</h1>
+            <p className="text-[#A1A1AA]">{t.subtitle}</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Email */}
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-[#A1A1AA]">
-                {t.emailLabel}
-              </Label>
+              <Label htmlFor="email" className="text-[#A1A1AA]">{t.emailLabel}</Label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#A1A1AA]" />
                 <Input
@@ -127,9 +121,7 @@ const Login = () => {
                   type="email"
                   placeholder="your@email.com"
                   value={formData.email}
-                  onChange={(e) =>
-                    setFormData({ ...formData, email: e.target.value })
-                  }
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   className="pl-10 bg-[#1A1A1A] border-white/10 focus:border-[#D4AF37] text-white placeholder:text-white/30"
                   required
                   data-testid="login-email"
@@ -137,11 +129,8 @@ const Login = () => {
               </div>
             </div>
 
-            {/* Password */}
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-[#A1A1AA]">
-                {t.passwordLabel}
-              </Label>
+              <Label htmlFor="password" className="text-[#A1A1AA]">{t.passwordLabel}</Label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#A1A1AA]" />
                 <Input
@@ -149,9 +138,7 @@ const Login = () => {
                   type={showPassword ? 'text' : 'password'}
                   placeholder="••••••••"
                   value={formData.password}
-                  onChange={(e) =>
-                    setFormData({ ...formData, password: e.target.value })
-                  }
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   className="pl-10 pr-10 bg-[#1A1A1A] border-white/10 focus:border-[#D4AF37] text-white placeholder:text-white/30"
                   required
                   data-testid="login-password"
@@ -161,11 +148,7 @@ const Login = () => {
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-[#A1A1AA] hover:text-white"
                 >
-                  {showPassword ? (
-                    <EyeOff className="w-5 h-5" />
-                  ) : (
-                    <Eye className="w-5 h-5" />
-                  )}
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
               </div>
             </div>
@@ -182,11 +165,7 @@ const Login = () => {
 
           <p className="mt-8 text-center text-[#A1A1AA]">
             {t.noAccount}{' '}
-            <Link
-              to="/register"
-              className="text-[#D4AF37] hover:underline"
-              data-testid="login-register-link"
-            >
+            <Link to="/register" className="text-[#D4AF37] hover:underline" data-testid="login-register-link">
               {t.createAccount}
             </Link>
           </p>
