@@ -1,90 +1,265 @@
 from fastapi import FastAPI, APIRouter, HTTPException, Depends, status, UploadFile, File
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from fastapi.responses import JSONResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
 import base64
+import httpx
+import re
 from pathlib import Path
-from pydantic import BaseModel, Field, ConfigDict, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr
 from typing import List, Optional
 import uuid
 from datetime import datetime, timezone, timedelta
 import jwt
 import bcrypt
-import re
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-
-app = FastAPI(title="Prestige Money Transfer API")
-
-origins = [
-    "https://prestige-horizon-transfer.onrender.com",
-    "http://localhost:3000",
-]
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],  # Crucial : autorise OPTIONS, POST, GET, PUT, DELETE
-    allow_headers=["*"],  # Crucial : autorise Content-Type, Authorization, etc.
-)
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
-mongo_url = os.environ['MONGO_URL']
-client = AsyncIOMotorClient(mongo_url)
-db = client[os.environ['DB_NAME']]
+# ============================================================
+# APP & MIDDLEWARE
+# ============================================================
 
-JWT_SECRET = os.environ.get('JWT_SECRET', 'prestige-horizon-secret-key-2024')
-JWT_ALGORITHM = "HS256"
+app = FastAPI(title="Prestige Money Transfer API")
+
+origins = os.environ.get("CORS_ORIGINS", "http://localhost:3000").split(",")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# ============================================================
+# DB & AUTH
+# ============================================================
+
+mongo_url = os.environ['MONGO_URL']
+client    = AsyncIOMotorClient(mongo_url)
+db        = client[os.environ['DB_NAME']]
+
+JWT_SECRET           = os.environ.get('JWT_SECRET', 'prestige-horizon-secret-key-2024')
+JWT_ALGORITHM        = "HS256"
 JWT_EXPIRATION_HOURS = 24
 
-security = HTTPBearer()
-
+security   = HTTPBearer()
 api_router = APIRouter(prefix="/api")
+logger     = logging.getLogger(__name__)
 
-logger = logging.getLogger(__name__)
+# ============================================================
+# EMAIL — Resend
+# ============================================================
+
+RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
+FROM_EMAIL     = os.environ.get("FROM_EMAIL", "Prestige Money Transfer <noreply@prestigemoneytransfer.ca>")
+RESEND_API_URL = "https://api.resend.com/emails"
+APP_URL        = os.environ.get("APP_URL", "http://localhost:3000")
+
+async def send_email(to: str, subject: str, html: str) -> bool:
+    if not RESEND_API_KEY:
+        logger.warning("RESEND_API_KEY non configurée — email ignoré")
+        return False
+    try:
+        async with httpx.AsyncClient(timeout=10) as h:
+            r = await h.post(
+                RESEND_API_URL,
+                headers={"Authorization": f"Bearer {RESEND_API_KEY}", "Content-Type": "application/json"},
+                json={"from": FROM_EMAIL, "to": [to], "subject": subject, "html": html},
+            )
+            if r.status_code not in (200, 201):
+                logger.error(f"Resend {r.status_code}: {r.text}")
+                return False
+            logger.info(f"Email envoyé → {to}")
+            return True
+    except Exception as e:
+        logger.error(f"send_email error: {e}")
+        return False
+
+def _base_template(title: str, body: str) -> str:
+    year = datetime.now().year
+    return f"""<!DOCTYPE html><html lang="fr">
+<head><meta charset="UTF-8"><title>{title}</title></head>
+<body style="margin:0;padding:0;background:#050505;font-family:system-ui,sans-serif">
+<table width="100%" cellpadding="0" cellspacing="0">
+  <tr><td align="center" style="padding:40px 16px">
+    <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%">
+      <tr><td style="background:#0A0A0A;border-radius:16px 16px 0 0;padding:32px;text-align:center;border-bottom:1px solid #1A1A1A">
+        <div style="font-size:22px;font-weight:700;color:#D4AF37;letter-spacing:1px">✦ PRESTIGE MONEY TRANSFER</div>
+        <div style="color:#555;font-size:11px;margin-top:6px;letter-spacing:3px;text-transform:uppercase">Canada ↔ Bénin</div>
+      </td></tr>
+      <tr><td style="background:#0F0F0F;padding:40px 32px">{body}</td></tr>
+      <tr><td style="background:#0A0A0A;border-radius:0 0 16px 16px;padding:24px 32px;text-align:center;border-top:1px solid #1A1A1A">
+        <p style="color:#555;font-size:12px;margin:0">© {year} Prestige Horizon Inc. · Enregistré CANAFE<br>
+        <a href="{APP_URL}" style="color:#D4AF37;text-decoration:none">{APP_URL}</a></p>
+      </td></tr>
+    </table>
+  </td></tr>
+</table>
+</body></html>"""
+
+def _row(label: str, value: str, gold: bool = False) -> str:
+    color = "#D4AF37" if gold else "#fff"
+    size  = "18px" if gold else "14px"
+    bg    = "background:#D4AF3710;" if gold else ""
+    return f"""<tr style="{bg}">
+      <td style="padding:12px 20px;color:#A1A1AA;font-size:13px;border-bottom:1px solid #1A1A1A">{label}</td>
+      <td style="padding:12px 20px;color:{color};font-size:{size};font-weight:700;text-align:right;border-bottom:1px solid #1A1A1A">{value}</td>
+    </tr>"""
+
+def email_confirmation(t: dict) -> tuple[str, str]:
+    flag      = "🇨🇦→🇧🇯" if t.get("corridor") == "canada_to_benin" else "🇧🇯→🇨🇦"
+    sc, rc    = t.get("send_currency","CAD"), t.get("receive_currency","XOF")
+    recv_fmt  = f"{t.get('receive_amount',0):,.0f} {rc}" if rc == "XOF" else f"{t.get('receive_amount',0):,.2f} {rc}"
+    tracking  = t.get("tracking_number","")
+    prenom    = t.get("sender_name","").split()[0]
+    instr     = t.get("payment_instructions", {})
+    steps_html = ""
+    if instr and instr.get("steps"):
+        steps_html = "<ol style='padding-left:20px;margin:8px 0 0'>"
+        for s in instr["steps"]:
+            steps_html += f"<li style='color:#A1A1AA;font-size:13px;margin-bottom:8px;line-height:1.6'>{s}</li>"
+        steps_html += "</ol>"
+        if instr.get("note"):
+            steps_html += f"<p style='color:#555;font-size:12px;margin:12px 0 0;padding:12px;background:#1A1A1A;border-radius:8px'>{instr['note']}</p>"
+    instr_block = f"""<div style="border:1px solid #D4AF3740;border-radius:12px;padding:20px;margin-bottom:24px">
+      <div style="color:#D4AF37;font-size:14px;font-weight:600;margin-bottom:12px">📋 {instr.get('title','Instructions de paiement')}</div>
+      {steps_html}</div>""" if instr else ""
+    subject = f"[Prestige] Transfert créé {flag} — {tracking}"
+    body = f"""
+    <h2 style="color:#fff;font-size:20px;margin:0 0 8px">Bonjour {prenom} 👋</h2>
+    <p style="color:#A1A1AA;font-size:14px;margin:0 0 28px;line-height:1.6">Votre transfert a été créé. Effectuez votre paiement selon les instructions ci-dessous.</p>
+    <div style="background:#1A1A1A;border-radius:12px;padding:20px;margin-bottom:24px;text-align:center">
+      <div style="color:#555;font-size:11px;text-transform:uppercase;letter-spacing:2px;margin-bottom:8px">Numéro de suivi</div>
+      <div style="color:#D4AF37;font-family:monospace;font-size:24px;font-weight:700;letter-spacing:3px">{tracking}</div>
+    </div>
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:#0A0A0A;border:1px solid #1A1A1A;border-radius:12px;overflow:hidden;margin-bottom:24px">
+      {_row("Vous envoyez", f"{t.get('send_amount',0):,.2f} {sc}")}
+      {_row("Frais de service", f"{t.get('fee',0):,.2f} {sc}")}
+      {_row("Total à payer", f"{t.get('total_charged',0):,.2f} {sc}")}
+      {_row("Le receveur reçoit", recv_fmt, gold=True)}
+    </table>
+    <div style="background:#1A1A1A;border-radius:12px;padding:16px 20px;margin-bottom:24px">
+      <div style="color:#555;font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Receveur</div>
+      <div style="color:#fff;font-size:14px;font-weight:600">{t.get('receiver_name','')}</div>
+      <div style="color:#A1A1AA;font-size:13px;margin-top:4px">{t.get('receiver_phone') or t.get('receiver_interac_email') or t.get('receiver_bank_account') or ''}</div>
+    </div>
+    {instr_block}
+    <div style="text-align:center;margin-top:28px">
+      <a href="{APP_URL}/transfers/{t.get('id','')}" style="display:inline-block;background:#D4AF37;color:#000;font-weight:700;font-size:15px;padding:14px 36px;border-radius:10px;text-decoration:none">Voir mon transfert →</a>
+    </div>"""
+    return subject, _base_template(subject, body)
+
+def email_completed(t: dict) -> tuple[str, str]:
+    flag     = "🇨🇦→🇧🇯" if t.get("corridor") == "canada_to_benin" else "🇧🇯→🇨🇦"
+    sc, rc   = t.get("send_currency","CAD"), t.get("receive_currency","XOF")
+    recv_fmt = f"{t.get('receive_amount',0):,.0f} {rc}" if rc == "XOF" else f"{t.get('receive_amount',0):,.2f} {rc}"
+    tracking = t.get("tracking_number","")
+    prenom   = t.get("sender_name","").split()[0]
+    note_block = f"""<div style="background:#1A1A1A;border-radius:10px;padding:14px 18px;margin-bottom:24px">
+      <div style="color:#555;font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Note de notre équipe</div>
+      <div style="color:#A1A1AA;font-size:14px;line-height:1.5">{t['admin_notes']}</div></div>""" if t.get("admin_notes") else ""
+    subject = f"[Prestige] ✅ Transfert complété {flag} — {tracking}"
+    body = f"""
+    <div style="text-align:center;margin-bottom:32px">
+      <div style="width:64px;height:64px;background:#22c55e20;border:2px solid #22c55e50;border-radius:50%;margin:0 auto 16px;line-height:64px;font-size:28px">✅</div>
+      <h2 style="color:#22c55e;font-size:22px;margin:0 0 8px">Transfert complété !</h2>
+      <p style="color:#A1A1AA;font-size:14px;margin:0">Bonjour {prenom}, les fonds ont été remis au receveur avec succès.</p>
+    </div>
+    <div style="background:#1A1A1A;border-radius:12px;padding:16px;margin-bottom:24px;text-align:center">
+      <div style="color:#555;font-size:11px;text-transform:uppercase;letter-spacing:2px;margin-bottom:6px">Numéro de suivi</div>
+      <div style="color:#D4AF37;font-family:monospace;font-size:18px;font-weight:700;letter-spacing:3px">{tracking}</div>
+    </div>
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:#0A0A0A;border:1px solid #22c55e30;border-radius:12px;overflow:hidden;margin-bottom:24px">
+      {_row("Vous avez envoyé", f"{t.get('send_amount',0):,.2f} {sc}")}
+      <tr style="background:#22c55e10">
+        <td style="padding:14px 20px;color:#A1A1AA;font-size:13px">{t.get('receiver_name','')} a reçu</td>
+        <td style="padding:14px 20px;color:#22c55e;font-size:20px;font-weight:700;text-align:right">{recv_fmt}</td>
+      </tr>
+    </table>
+    {note_block}
+    <p style="color:#A1A1AA;font-size:14px;line-height:1.7;text-align:center;margin:0 0 28px">Merci de faire confiance à <strong style="color:#D4AF37">Prestige Money Transfer</strong> pour vos envois Canada ↔ Bénin. 🙏</p>
+    <div style="text-align:center">
+      <a href="{APP_URL}/new-transfer" style="display:inline-block;background:#D4AF37;color:#000;font-weight:700;font-size:15px;padding:14px 36px;border-radius:10px;text-decoration:none">Faire un autre transfert →</a>
+    </div>"""
+    return subject, _base_template(subject, body)
+
+# ============================================================
+# TAUX DE CHANGE — Cache en mémoire + API externe
+# ============================================================
+
+# Cache en mémoire : évite d'appeler l'API à chaque transfert
+_rate_cache: dict = {"rate": None, "fetched_at": None}
+RATE_CACHE_TTL_MINUTES = 30  # rafraîchissement toutes les 30 min
+RATE_FALLBACK_CAD_XOF  = 445.0  # valeur de secours si l'API est indisponible
+
+async def fetch_live_rate_cad_xof() -> float:
+    """
+    Récupère le taux CAD/XOF depuis l'API open.er-api.com (gratuite, sans clé).
+    XOF est arrimé à l'EUR (655,957 XOF = 1 EUR) — on calcule via CAD→EUR→XOF.
+    Cache de 30 min pour ne pas surcharger l'API.
+    """
+    now = datetime.now(timezone.utc)
+
+    # Retourner le cache si encore valide
+    if _rate_cache["rate"] and _rate_cache["fetched_at"]:
+        age = (now - _rate_cache["fetched_at"]).total_seconds() / 60
+        if age < RATE_CACHE_TTL_MINUTES:
+            return _rate_cache["rate"]
+
+    try:
+        async with httpx.AsyncClient(timeout=8) as h:
+            r = await h.get("https://open.er-api.com/v6/latest/CAD")
+            if r.status_code == 200:
+                data = r.json()
+                rates = data.get("rates", {})
+                # XOF est directement disponible dans cette API
+                xof_rate = rates.get("XOF")
+                if xof_rate and xof_rate > 0:
+                    # Arrondir à 2 décimales pour l'affichage
+                    rate = round(float(xof_rate), 2)
+                    _rate_cache["rate"]       = rate
+                    _rate_cache["fetched_at"] = now
+                    logger.info(f"Taux live CAD/XOF mis à jour : {rate}")
+                    return rate
+    except Exception as e:
+        logger.warning(f"Impossible de récupérer le taux live: {e}")
+
+    # Fallback : taux admin en DB, puis constante
+    rate_doc = await db.settings.find_one({"key": "rate_cad_xof"})
+    if rate_doc:
+        logger.info(f"Taux fallback depuis DB : {rate_doc['value']}")
+        return float(rate_doc["value"])
+
+    logger.warning(f"Taux fallback constant utilisé : {RATE_FALLBACK_CAD_XOF}")
+    return RATE_FALLBACK_CAD_XOF
 
 # ============================================================
 # CORRIDORS & SERVICES
-# Canada → Bénin : paiement Interac ou USDC, réception MTN/Moov/Banque
-# Bénin  → Canada : paiement virement bancaire BJ, réception Interac
 # ============================================================
 
 CORRIDORS = {
     "canada_to_benin": {
         "label": "Canada → Bénin",
-        "from_country": "Canada",
-        "to_country": "Bénin",
-        "from_currency": "CAD",
-        "to_currency": "XOF",
-        "payment_methods": ["interac", "crypto_usdc"],
+        "from_country": "Canada", "to_country": "Bénin",
+        "from_currency": "CAD",   "to_currency": "XOF",
+        "payment_methods":  ["interac", "crypto_usdc"],
         "delivery_methods": ["mtn", "moov", "bank_transfer"],
-        "rate_xof_per_cad": 430.0,
-        "fee_percentage": 2.0,
-        "flat_fee_cad": 5.0,
-        "min_amount_cad": 50.0,
-        "max_amount_cad": 5000.0,
+        "fee_percentage": 2.0, "flat_fee_cad": 5.0,
+        "min_amount_cad": 50.0, "max_amount_cad": 5000.0,
         "estimated_time": "24-48h"
     },
     "benin_to_canada": {
         "label": "Bénin → Canada",
-        "from_country": "Bénin",
-        "to_country": "Canada",
-        "from_currency": "XOF",
-        "to_currency": "CAD",
-        "payment_methods": ["bank_transfer", "mtn", "moov"],
+        "from_country": "Bénin", "to_country": "Canada",
+        "from_currency": "XOF",  "to_currency": "CAD",
+        "payment_methods":  ["bank_transfer", "mtn", "moov"],
         "delivery_methods": ["interac"],
-        "rate_cad_per_xof": 0.00226,
-        "fee_percentage": 2.5,
-        "flat_fee_xof": 2500.0,
-        "min_amount_xof": 25000.0,
-        "max_amount_xof": 2500000.0,
+        "fee_percentage": 2.5, "flat_fee_xof": 2500.0,
+        "min_amount_xof": 25000.0, "max_amount_xof": 2500000.0,
         "estimated_time": "2-5 jours ouvrables"
     }
 }
@@ -93,7 +268,7 @@ PAYMENT_METHOD_LABELS = {
     "interac":       {"label": "Virement Interac / Bancaire", "icon": "bank",   "currency": "CAD"},
     "crypto_usdc":   {"label": "Crypto (USDC)",               "icon": "crypto", "currency": "USDC"},
     "bank_transfer": {"label": "Virement Bancaire",           "icon": "bank",   "currency": "XOF"},
-    "mtn":           {"label": "MoMo",                        "color": "#FFCC00", "icon": "mtn"},
+    "mtn":           {"label": "MTN MoMo",                    "color": "#FFCC00", "icon": "mtn"},
     "moov":          {"label": "Moov Money",                  "color": "#00a51b", "icon": "moov"},
 }
 
@@ -104,7 +279,6 @@ DELIVERY_METHOD_LABELS = {
     "interac":       {"label": "Interac / Bancaire", "color": "#D4AF37", "icon": "bank"},
 }
 
-# Instructions de paiement affichées au client après création du transfert
 PAYMENT_INSTRUCTIONS = {
     "interac": {
         "title": "Envoyez votre virement Interac",
@@ -132,7 +306,7 @@ PAYMENT_INSTRUCTIONS = {
     "bank_transfer": {
         "title": "Effectuez votre virement bancaire",
         "steps": [
-            "Banque : Prestige Money Transfer — Banque of Africa Bénin",
+            "Banque : Prestige Money Transfer — Bank of Africa Bénin",
             "IBAN / Numéro de compte : BJ66 BJ00 6101 8800 3000 0000 000",
             "Montant : {total_charged} XOF",
             "Motif du virement : {tracking_number}",
@@ -162,23 +336,13 @@ PAYMENT_INSTRUCTIONS = {
     }
 }
 
-# Statuts valides et transitions autorisées (modèle manuel)
-VALID_STATUSES = [
-    "pending",            # créé, en attente de paiement
-    "payment_received",   # admin a confirmé réception du paiement
-    "processing",         # admin en cours de décaissement
-    "completed",          # décaissement effectué
-    "cancelled",          # annulé (avant traitement)
-    "failed"              # échec (problème technique ou fraude)
-]
+VALID_STATUSES = ["pending", "payment_received", "processing", "completed", "cancelled", "failed"]
 
 ADMIN_TRANSITIONS = {
     "pending":          ["payment_received", "cancelled"],
     "payment_received": ["processing", "cancelled", "failed"],
     "processing":       ["completed", "failed"],
-    "completed":        [],
-    "cancelled":        [],
-    "failed":           ["pending"]
+    "completed":        [], "cancelled": [], "failed": ["pending"]
 }
 
 STATUS_LABELS = {
@@ -199,7 +363,7 @@ class UserCreate(BaseModel):
     password: str
     full_name: str
     phone: str
-    country: str  # "Canada" | "Bénin"
+    country: str
 
 class UserLogin(BaseModel):
     email: EmailStr
@@ -207,26 +371,18 @@ class UserLogin(BaseModel):
 
 class UserResponse(BaseModel):
     model_config = ConfigDict(extra="ignore")
-    id: str
-    email: str
-    full_name: str
-    phone: str
-    country: str
-    is_admin: bool = False
-    created_at: str
+    id: str; email: str; full_name: str; phone: str; country: str
+    is_admin: bool = False; created_at: str
 
 class TransferCreate(BaseModel):
-    corridor: str                           # canada_to_benin | benin_to_canada
-    payment_method: str                     # interac | crypto_usdc | bank_transfer
-    delivery_method: str                    # mtn | moov | bank_transfer | interac
-    send_amount: float                      # montant dans la devise source
+    corridor: str; payment_method: str; delivery_method: str; send_amount: float
     receiver_name: str
-    receiver_phone: Optional[str] = None   # obligatoire si MTN/Moov
-    receiver_mobile_network: Optional[str] = None  # Ce champ est rempli automatiquement pour les numéros béninois (MTN/Moov) après validation
+    receiver_phone: Optional[str] = None
+    receiver_mobile_network: Optional[str] = None
     receiver_bank_name: Optional[str] = None
     receiver_bank_account: Optional[str] = None
     receiver_bank_iban: Optional[str] = None
-    receiver_interac_email: Optional[str] = None   # pour livraison Interac au Canada
+    receiver_interac_email: Optional[str] = None
     notes: Optional[str] = None
 
 class TransferUpdate(BaseModel):
@@ -237,40 +393,23 @@ class TransferUpdate(BaseModel):
 
 class TransferResponse(BaseModel):
     model_config = ConfigDict(extra="ignore")
-    id: str
-    user_id: str
-    corridor: str
-    payment_method: str
-    delivery_method: str
-    send_amount: float
-    send_currency: str
-    fee: float
-    total_charged: float
-    receive_amount: float
-    receive_currency: str
-    exchange_rate: float
+    id: str; user_id: str; corridor: str; payment_method: str; delivery_method: str
+    send_amount: float; send_currency: str; fee: float; total_charged: float
+    receive_amount: float; receive_currency: str; exchange_rate: float
     receiver_name: str
     receiver_phone: Optional[str] = None
+    receiver_mobile_network: Optional[str] = None
     receiver_bank_name: Optional[str] = None
     receiver_bank_account: Optional[str] = None
     receiver_bank_iban: Optional[str] = None
     receiver_interac_email: Optional[str] = None
-    sender_name: str = ""
-    sender_email: str = ""
-    sender_phone: str = ""
-    sender_country: str = ""
+    sender_name: str = ""; sender_email: str = ""; sender_phone: str = ""; sender_country: str = ""
     status: str
-    status_label: Optional[str] = None
-    status_color: Optional[str] = None
-    tracking_number: Optional[str] = None
-    admin_notes: Optional[str] = None
-    notes: Optional[str] = None
-    payment_proof_filename: Optional[str] = None
-    payment_instructions: Optional[dict] = None
-    next_statuses: Optional[List[str]] = None
-    created_at: str
-    updated_at: str
-    receiver_mobile_network: Optional[str] = None
+    status_label: Optional[str] = None; status_color: Optional[str] = None
+    tracking_number: Optional[str] = None; admin_notes: Optional[str] = None
+    notes: Optional[str] = None; payment_proof_filename: Optional[str] = None
+    payment_instructions: Optional[dict] = None; next_statuses: Optional[List[str]] = None
+    created_at: str; updated_at: str
 
 class RateUpdate(BaseModel):
     rate: float
@@ -279,110 +418,97 @@ class RateUpdate(BaseModel):
 # HELPERS
 # ============================================================
 
-def hash_password(password: str) -> str:
-    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+def hash_password(p: str) -> str:
+    return bcrypt.hashpw(p.encode(), bcrypt.gensalt()).decode()
 
-def verify_password(password: str, hashed: str) -> bool:
-    try:
-        return bcrypt.checkpw(password.encode('utf-8'), hashed.encode('utf-8'))
-    except Exception:
-        return False
+def verify_password(p: str, h: str) -> bool:
+    try: return bcrypt.checkpw(p.encode(), h.encode())
+    except: return False
 
 def create_token(user_id: str, is_admin: bool = False) -> str:
-    expiration = datetime.now(timezone.utc) + timedelta(hours=JWT_EXPIRATION_HOURS)
-    return jwt.encode(
-        {"user_id": user_id, "is_admin": is_admin, "exp": expiration},
-        JWT_SECRET, algorithm=JWT_ALGORITHM
-    )
+    exp = datetime.now(timezone.utc) + timedelta(hours=JWT_EXPIRATION_HOURS)
+    return jwt.encode({"user_id": user_id, "is_admin": is_admin, "exp": exp}, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
 def decode_token(token: str) -> dict:
-    try:
-        return jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
-    except jwt.ExpiredSignatureError:
-        raise HTTPException(status_code=401, detail="Token expiré")
-    except jwt.InvalidTokenError:
-        raise HTTPException(status_code=401, detail="Token invalide")
+    try: return jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+    except jwt.ExpiredSignatureError: raise HTTPException(401, "Token expiré")
+    except jwt.InvalidTokenError:     raise HTTPException(401, "Token invalide")
 
-async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    payload = decode_token(credentials.credentials)
+async def get_current_user(creds: HTTPAuthorizationCredentials = Depends(security)):
+    payload = decode_token(creds.credentials)
     user = await db.users.find_one({"id": payload["user_id"]}, {"_id": 0})
-    if not user:
-        raise HTTPException(status_code=401, detail="Utilisateur introuvable")
+    if not user: raise HTTPException(401, "Utilisateur introuvable")
     return user
 
-async def get_admin_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    payload = decode_token(credentials.credentials)
+async def get_admin_user(creds: HTTPAuthorizationCredentials = Depends(security)):
+    payload = decode_token(creds.credentials)
     user = await db.users.find_one({"id": payload["user_id"]}, {"_id": 0})
-    if not user or not user.get("is_admin"):
-        raise HTTPException(status_code=403, detail="Accès admin requis")
+    if not user or not user.get("is_admin"): raise HTTPException(403, "Accès admin requis")
     return user
 
 def generate_tracking_number() -> str:
-    """Génère un numéro de suivi lisible : PMT-YYYYMMDD-XXXX"""
-    today = datetime.now(timezone.utc).strftime("%Y%m%d")
-    suffix = str(uuid.uuid4()).upper()[:6]
-    return f"PMT-{today}-{suffix}"
+    return f"PMT-{datetime.now(timezone.utc).strftime('%Y%m%d')}-{str(uuid.uuid4()).upper()[:6]}"
 
-def calculate_transfer(corridor_key: str, send_amount: float) -> dict:
-    c = CORRIDORS[corridor_key]
+# Prefixes ARCEP Bénin (plan à 10 chiffres post-01)
+_MTN_PREFIXES  = {"40","41","42","43","44","45","46","47","50","51","52","53","54","56","57","59","61","62","66","67","69","90","91","96","97"}
+_MOOV_PREFIXES = {"48","55","58","60","63","64","65","68","94","95","98","99"}
+
+def validate_benin_mobile_number(phone: str, method: str) -> dict:
+    clean = re.sub(r"[\s+]", "", phone)
+    if clean.startswith("229"):   clean = clean[3:]
+    if len(clean) == 8:           clean = "01" + clean
+    if not re.fullmatch(r"01\d{8}", clean):
+        raise HTTPException(400, "Numéro béninois invalide. Format attendu : +229 01XX XX XX XX")
+    prefix = clean[2:4]
+    if   prefix in _MTN_PREFIXES:  network = "mtn"
+    elif prefix in _MOOV_PREFIXES: network = "moov"
+    else: raise HTTPException(400, "Opérateur non reconnu pour ce préfixe béninois.")
+    if method in ("mtn","moov") and network != method:
+        raise HTTPException(400, f"Ce numéro appartient à {network.upper()}, méthode choisie : {method.upper()}")
+    return {"normalized_phone": f"+229{clean}", "network": network}
+
+async def calculate_transfer(corridor_key: str, send_amount: float) -> dict:
+    c       = CORRIDORS[corridor_key]
     fee_pct = c["fee_percentage"] / 100
+    rate    = await fetch_live_rate_cad_xof()   # ← taux live
+
     if corridor_key == "canada_to_benin":
-        flat = c["flat_fee_cad"]
-        fee = round(send_amount * fee_pct + flat, 2)
-        total_charged = round(send_amount + fee, 2)
-        rate = c["rate_xof_per_cad"]
+        fee            = round(send_amount * fee_pct + c["flat_fee_cad"], 2)
+        total_charged  = round(send_amount + fee, 2)
         receive_amount = round(send_amount * rate, 0)
-        return {
-            "send_currency": "CAD", "receive_currency": "XOF",
-            "fee": fee, "total_charged": total_charged,
-            "receive_amount": receive_amount, "exchange_rate": rate
-        }
+        return {"send_currency":"CAD","receive_currency":"XOF",
+                "fee":fee,"total_charged":total_charged,"receive_amount":receive_amount,"exchange_rate":rate}
     else:
-        flat = c["flat_fee_xof"]
-        fee = round(send_amount * fee_pct + flat, 0)
-        total_charged = round(send_amount + fee, 0)
-        rate = c["rate_cad_per_xof"]
-        receive_amount = round(send_amount * rate, 2)
-        return {
-            "send_currency": "XOF", "receive_currency": "CAD",
-            "fee": fee, "total_charged": total_charged,
-            "receive_amount": receive_amount, "exchange_rate": rate
-        }
+        rate_inv       = round(1 / rate, 6)
+        fee            = round(send_amount * fee_pct + c["flat_fee_xof"], 0)
+        total_charged  = round(send_amount + fee, 0)
+        receive_amount = round(send_amount * rate_inv, 2)
+        return {"send_currency":"XOF","receive_currency":"CAD",
+                "fee":fee,"total_charged":total_charged,"receive_amount":receive_amount,"exchange_rate":rate_inv}
 
 def build_payment_instructions(payment_method: str, tracking_number: str, total_charged: float) -> dict:
-    """Construit les instructions de paiement personnalisées pour le client."""
-    instructions = PAYMENT_INSTRUCTIONS.get(payment_method, {})
-    if not instructions:
-        return {}
-    usdc_rate = 1.36  # CAD/USDC approximatif — à rendre dynamique plus tard
-    total_usdc = round(total_charged / usdc_rate, 2)
-    filled_steps = [
-        s.replace("{total_charged}", str(total_charged))
-         .replace("{tracking_number}", tracking_number)
-         .replace("{total_charged_usdc}", str(total_usdc))
-        for s in instructions.get("steps", [])
-    ]
+    instr = PAYMENT_INSTRUCTIONS.get(payment_method, {})
+    if not instr: return {}
+    total_usdc = round(total_charged / 1.36, 2)
     return {
-        "title": instructions.get("title", ""),
-        "steps": filled_steps,
-        "note": instructions.get("note", "")
+        "title": instr["title"],
+        "note":  instr.get("note",""),
+        "steps": [s.replace("{total_charged}", str(total_charged))
+                   .replace("{tracking_number}", tracking_number)
+                   .replace("{total_charged_usdc}", str(total_usdc))
+                  for s in instr["steps"]]
     }
 
-def enrich_transfer(transfer: dict) -> dict:
-    """Ajoute status_label, status_color, next_statuses et payment_instructions."""
-    s = transfer.get("status", "pending")
-    meta = STATUS_LABELS.get(s, {})
-    transfer["status_label"] = meta.get("label", s)
-    transfer["status_color"] = meta.get("color", "gray")
-    transfer["next_statuses"] = ADMIN_TRANSITIONS.get(s, [])
-    # Reconstruire les instructions si pas encore stockées
-    if not transfer.get("payment_instructions") and transfer.get("tracking_number"):
-        transfer["payment_instructions"] = build_payment_instructions(
-            transfer["payment_method"],
-            transfer["tracking_number"],
-            transfer["total_charged"]
-        )
-    return transfer
+def enrich_transfer(t: dict) -> dict:
+    s    = t.get("status","pending")
+    meta = STATUS_LABELS.get(s,{})
+    t["status_label"]   = meta.get("label",s)
+    t["status_color"]   = meta.get("color","gray")
+    t["next_statuses"]  = ADMIN_TRANSITIONS.get(s,[])
+    if not t.get("payment_instructions") and t.get("tracking_number"):
+        t["payment_instructions"] = build_payment_instructions(
+            t["payment_method"], t["tracking_number"], t["total_charged"])
+    return t
 
 # ============================================================
 # AUTH ROUTES
@@ -390,35 +516,29 @@ def enrich_transfer(transfer: dict) -> dict:
 
 @api_router.post("/auth/register", response_model=dict)
 async def register(user: UserCreate):
-    if user.country not in ["Canada", "Bénin", "Benin"]:
-        raise HTTPException(status_code=400, detail="Seuls les résidents du Canada et du Bénin peuvent s'inscrire.")
-    existing = await db.users.find_one({"email": user.email})
-    if existing:
-        raise HTTPException(status_code=400, detail="Email déjà enregistré")
-    user_id = str(uuid.uuid4())
-    now = datetime.now(timezone.utc).isoformat()
-    country = "Bénin" if user.country == "Benin" else user.country
-    user_doc = {
-        "id": user_id, "email": user.email,
-        "password": hash_password(user.password),
-        "full_name": user.full_name, "phone": user.phone,
-        "country": country, "is_admin": False, "created_at": now
-    }
-    await db.users.insert_one(user_doc)
-    token = create_token(user_id)
-    return {"token": token, "user": {k: v for k, v in user_doc.items() if k not in ("password", "_id")}}
+    if user.country not in ["Canada","Bénin","Benin"]:
+        raise HTTPException(400, "Seuls les résidents du Canada et du Bénin peuvent s'inscrire.")
+    if await db.users.find_one({"email": user.email}):
+        raise HTTPException(400, "Email déjà enregistré")
+    uid = str(uuid.uuid4()); now = datetime.now(timezone.utc).isoformat()
+    doc = {"id":uid,"email":user.email,"password":hash_password(user.password),
+           "full_name":user.full_name,"phone":user.phone,
+           "country":"Bénin" if user.country=="Benin" else user.country,
+           "is_admin":False,"created_at":now}
+    await db.users.insert_one(doc)
+    return {"token": create_token(uid), "user": {k:v for k,v in doc.items() if k not in ("password","_id")}}
 
 @api_router.post("/auth/login", response_model=dict)
 async def login(credentials: UserLogin):
-    user = await db.users.find_one({"email": credentials.email}, {"_id": 0})
+    user = await db.users.find_one({"email": credentials.email}, {"_id":0})
     if not user or not verify_password(credentials.password, user["password"]):
-        raise HTTPException(status_code=401, detail="Identifiants invalides")
-    token = create_token(user["id"], user.get("is_admin", False))
-    return {"token": token, "user": {k: v for k, v in user.items() if k != "password"}}
+        raise HTTPException(401, "Identifiants invalides")
+    return {"token": create_token(user["id"], user.get("is_admin",False)),
+            "user": {k:v for k,v in user.items() if k != "password"}}
 
 @api_router.get("/auth/me", response_model=UserResponse)
 async def get_me(user: dict = Depends(get_current_user)):
-    return UserResponse(**{k: v for k, v in user.items() if k != "password"})
+    return UserResponse(**{k:v for k,v in user.items() if k != "password"})
 
 # ============================================================
 # CORRIDOR / RATE ROUTES
@@ -426,39 +546,45 @@ async def get_me(user: dict = Depends(get_current_user)):
 
 @api_router.get("/corridors")
 async def get_corridors():
+    live_rate = await fetch_live_rate_cad_xof()
     result = []
     for key, c in CORRIDORS.items():
+        rate = live_rate if key == "canada_to_benin" else round(1/live_rate, 6)
         result.append({
-            "key": key,
-            "label": c["label"],
-            "from_country": c["from_country"],
-            "to_country": c["to_country"],
-            "from_currency": c["from_currency"],
-            "to_currency": c["to_currency"],
-            "payment_methods": [
-                {**PAYMENT_METHOD_LABELS[m], "key": m} for m in c["payment_methods"]
-            ],
-            "delivery_methods": [
-                {**DELIVERY_METHOD_LABELS[m], "key": m} for m in c["delivery_methods"]
-            ],
-            "fee_percentage": c["fee_percentage"],
-            "estimated_time": c["estimated_time"],
+            "key": key, "label": c["label"],
+            "from_country": c["from_country"], "to_country": c["to_country"],
+            "from_currency": c["from_currency"], "to_currency": c["to_currency"],
+            "payment_methods":  [{**PAYMENT_METHOD_LABELS[m], "key": m} for m in c["payment_methods"]],
+            "delivery_methods": [{**DELIVERY_METHOD_LABELS[m], "key": m} for m in c["delivery_methods"]],
+            "fee_percentage": c["fee_percentage"], "estimated_time": c["estimated_time"],
+            "exchange_rate": rate,
             "min_amount": c.get("min_amount_cad") or c.get("min_amount_xof"),
             "max_amount": c.get("max_amount_cad") or c.get("max_amount_xof"),
-            "exchange_rate": c.get("rate_xof_per_cad") or c.get("rate_cad_per_xof"),
         })
     return result
 
 @api_router.get("/corridors/{corridor_key}/calculate")
 async def calculate_route(corridor_key: str, send_amount: float):
     if corridor_key not in CORRIDORS:
-        raise HTTPException(status_code=404, detail="Corridor introuvable")
+        raise HTTPException(404, "Corridor introuvable")
     c = CORRIDORS[corridor_key]
     min_amt = c.get("min_amount_cad") or c.get("min_amount_xof")
     max_amt = c.get("max_amount_cad") or c.get("max_amount_xof")
-    if send_amount < min_amt or send_amount > max_amt:
-        raise HTTPException(status_code=400, detail=f"Montant entre {min_amt} et {max_amt}")
-    return calculate_transfer(corridor_key, send_amount)
+    if not (min_amt <= send_amount <= max_amt):
+        raise HTTPException(400, f"Montant hors limites ({min_amt} – {max_amt})")
+    return await calculate_transfer(corridor_key, send_amount)
+
+@api_router.get("/rate/live")
+async def get_live_rate():
+    """Retourne le taux CAD/XOF actuel avec la source et l'heure de récupération."""
+    rate = await fetch_live_rate_cad_xof()
+    return {
+        "rate_cad_xof":   rate,
+        "rate_xof_cad":   round(1 / rate, 6),
+        "fetched_at":     _rate_cache.get("fetched_at", datetime.now(timezone.utc)).isoformat(),
+        "cache_ttl_min":  RATE_CACHE_TTL_MINUTES,
+        "source":         "open.er-api.com" if _rate_cache.get("rate") else "fallback",
+    }
 
 @api_router.get("/statuses")
 async def get_statuses():
@@ -471,182 +597,116 @@ async def get_statuses():
 @api_router.post("/transfers", response_model=TransferResponse, status_code=status.HTTP_201_CREATED)
 async def create_transfer(transfer: TransferCreate, user: dict = Depends(get_current_user)):
     if transfer.corridor not in CORRIDORS:
-        raise HTTPException(status_code=400, detail="Corridor invalide")
+        raise HTTPException(400, "Corridor invalide")
     c = CORRIDORS[transfer.corridor]
-
-    if transfer.payment_method not in c["payment_methods"]:
-        raise HTTPException(status_code=400, detail="Méthode de paiement invalide pour ce corridor")
-    if transfer.delivery_method not in c["delivery_methods"]:
-        raise HTTPException(status_code=400, detail="Méthode de livraison invalide pour ce corridor")
-
-    # Validation des champs obligatoires selon le mode de livraison
-    if transfer.delivery_method in ["mtn", "moov"] and not transfer.receiver_phone:
-        raise HTTPException(status_code=400, detail="Numéro de téléphone du receveur requis pour Mobile Money")
+    if transfer.payment_method  not in c["payment_methods"]:  raise HTTPException(400, "Méthode de paiement invalide")
+    if transfer.delivery_method not in c["delivery_methods"]: raise HTTPException(400, "Méthode de livraison invalide")
+    if transfer.delivery_method in ("mtn","moov") and not transfer.receiver_phone:
+        raise HTTPException(400, "Numéro Mobile Money requis")
     if transfer.delivery_method == "bank_transfer" and not transfer.receiver_bank_account:
-        raise HTTPException(status_code=400, detail="Numéro de compte bancaire requis pour virement bancaire")
-    if transfer.delivery_method == "interac" and not transfer.receiver_interac_email:
-        raise HTTPException(status_code=400, detail="Email Interac du receveur requis")
+        raise HTTPException(400, "Numéro de compte bancaire requis")
     if transfer.delivery_method == "interac":
-        email_regex = r"^[^@]+@[^@]+\.[^@]+$"
-        if not re.match(email_regex, transfer.receiver_interac_email):
-            raise HTTPException(
-                status_code=400,
-                detail="Adresse courriel Interac invalide / Invalid Email Address for Interac"
-            )
-
+        if not transfer.receiver_interac_email:
+            raise HTTPException(400, "Email Interac du receveur requis")
+        if not re.match(r"^[^@]+@[^@]+\.[^@]+$", transfer.receiver_interac_email):
+            raise HTTPException(400, "Adresse courriel Interac invalide")
     min_amt = c.get("min_amount_cad") or c.get("min_amount_xof")
     max_amt = c.get("max_amount_cad") or c.get("max_amount_xof")
-    if transfer.send_amount < min_amt or transfer.send_amount > max_amt:
-        raise HTTPException(status_code=400, detail=f"Montant entre {min_amt} et {max_amt}")
+    if not (min_amt <= transfer.send_amount <= max_amt):
+        raise HTTPException(400, f"Montant hors limites ({min_amt} – {max_amt})")
 
-    receiver_mobile_network = None
-    if transfer.delivery_method in ["mtn", "moov"]:
-        validation = validate_benin_mobile_number(
-            transfer.receiver_phone,
-            transfer.delivery_method
-        )
-        transfer.receiver_phone = validation["normalized_phone"]
-        receiver_mobile_network = validation["network"]
+    network = None
+    if transfer.delivery_method in ("mtn","moov"):
+        v = validate_benin_mobile_number(transfer.receiver_phone, transfer.delivery_method)
+        transfer.receiver_phone = v["normalized_phone"]
+        network = v["network"]
 
-    calc = calculate_transfer(transfer.corridor, transfer.send_amount)
-    transfer_id = str(uuid.uuid4())
-    tracking_number = generate_tracking_number()
-    now = datetime.now(timezone.utc).isoformat()
-
-    payment_instructions = build_payment_instructions(
-        transfer.payment_method, tracking_number, calc["total_charged"]
-    )
+    calc           = await calculate_transfer(transfer.corridor, transfer.send_amount)
+    transfer_id    = str(uuid.uuid4())
+    tracking       = generate_tracking_number()
+    now            = datetime.now(timezone.utc).isoformat()
+    instructions   = build_payment_instructions(transfer.payment_method, tracking, calc["total_charged"])
 
     doc = {
-        "id": transfer_id,
-        "user_id": user["id"],
-        "corridor": transfer.corridor,
-        "payment_method": transfer.payment_method,
-        "delivery_method": transfer.delivery_method,
-        "send_amount": transfer.send_amount,
-        "send_currency": calc["send_currency"],
-        "fee": calc["fee"],
-        "total_charged": calc["total_charged"],
-        "receive_amount": calc["receive_amount"],
-        "receive_currency": calc["receive_currency"],
-        "exchange_rate": calc["exchange_rate"],
-        "receiver_name": transfer.receiver_name,
-        "receiver_phone": transfer.receiver_phone,
-        "receiver_mobile_network": receiver_mobile_network,
-        "receiver_bank_name": transfer.receiver_bank_name,
-        "receiver_bank_account": transfer.receiver_bank_account,
-        "receiver_bank_iban": transfer.receiver_bank_iban,
+        "id": transfer_id, "user_id": user["id"], "corridor": transfer.corridor,
+        "payment_method": transfer.payment_method, "delivery_method": transfer.delivery_method,
+        "send_amount": transfer.send_amount, **calc,
+        "receiver_name": transfer.receiver_name, "receiver_phone": transfer.receiver_phone,
+        "receiver_mobile_network": network, "receiver_bank_name": transfer.receiver_bank_name,
+        "receiver_bank_account": transfer.receiver_bank_account, "receiver_bank_iban": transfer.receiver_bank_iban,
         "receiver_interac_email": transfer.receiver_interac_email,
-        "sender_name": user["full_name"],
-        "sender_email": user["email"],
-        "sender_phone": user["phone"],
-        "sender_country": user["country"],
-        "status": "pending",
-        "tracking_number": tracking_number,
-        "admin_notes": None,
-        "notes": transfer.notes,
-        "payment_proof_filename": None,
-        "payment_instructions": payment_instructions,
-        "created_at": now,
-        "updated_at": now,
+        "sender_name": user["full_name"], "sender_email": user["email"],
+        "sender_phone": user["phone"], "sender_country": user["country"],
+        "status": "pending", "tracking_number": tracking,
+        "admin_notes": None, "notes": transfer.notes,
+        "payment_proof_filename": None, "payment_instructions": instructions,
+        "created_at": now, "updated_at": now,
     }
     await db.transfers.insert_one(doc)
+
+    # Email de confirmation (non bloquant)
+    if doc.get("sender_email"):
+        subj, html = email_confirmation(doc)
+        await send_email(doc["sender_email"], subj, html)
+
     return TransferResponse(**enrich_transfer(doc))
 
 @api_router.get("/transfers", response_model=List[TransferResponse])
 async def get_user_transfers(user: dict = Depends(get_current_user)):
-    transfers = await db.transfers.find(
-        {"user_id": user["id"]}, {"_id": 0}
-    ).sort("created_at", -1).to_list(100)
-    return [TransferResponse(**enrich_transfer(t)) for t in transfers]
+    ts = await db.transfers.find({"user_id": user["id"]}, {"_id":0}).sort("created_at",-1).to_list(100)
+    return [TransferResponse(**enrich_transfer(t)) for t in ts]
 
 @api_router.get("/transfers/{transfer_id}", response_model=TransferResponse)
 async def get_transfer(transfer_id: str, user: dict = Depends(get_current_user)):
-    transfer = await db.transfers.find_one(
-        {"id": transfer_id, "user_id": user["id"]}, {"_id": 0}
-    )
-    if not transfer:
-        raise HTTPException(status_code=404, detail="Transfert introuvable")
-    return TransferResponse(**enrich_transfer(transfer))
+    t = await db.transfers.find_one({"id": transfer_id, "user_id": user["id"]}, {"_id":0})
+    if not t: raise HTTPException(404, "Transfert introuvable")
+    return TransferResponse(**enrich_transfer(t))
 
 @api_router.post("/transfers/{transfer_id}/proof")
-async def upload_payment_proof(
-    transfer_id: str,
-    file: UploadFile = File(...),
-    user: dict = Depends(get_current_user)
-):
-    """Le client uploade sa preuve de paiement (image ou PDF, max 5 Mo)."""
-    transfer = await db.transfers.find_one({"id": transfer_id, "user_id": user["id"]}, {"_id": 0})
-    if not transfer:
-        raise HTTPException(status_code=404, detail="Transfert introuvable")
-    if transfer["status"] != "pending":
-        raise HTTPException(status_code=400, detail="Preuve uploadable uniquement sur un transfert en attente")
-
-    allowed_types = ["image/jpeg", "image/png", "image/webp", "application/pdf"]
-    if file.content_type not in allowed_types:
-        raise HTTPException(status_code=400, detail="Format accepté : JPG, PNG, WebP, PDF")
-
+async def upload_proof(transfer_id: str, file: UploadFile = File(...), user: dict = Depends(get_current_user)):
+    t = await db.transfers.find_one({"id": transfer_id, "user_id": user["id"]}, {"_id":0})
+    if not t: raise HTTPException(404, "Transfert introuvable")
+    if t["status"] != "pending": raise HTTPException(400, "Preuve uploadable uniquement sur un transfert en attente")
+    if file.content_type not in ["image/jpeg","image/png","image/webp","application/pdf"]:
+        raise HTTPException(400, "Format accepté : JPG, PNG, WebP, PDF")
     content = await file.read()
-    if len(content) > 5 * 1024 * 1024:
-        raise HTTPException(status_code=400, detail="Fichier trop volumineux (max 5 Mo)")
-
-    # Stockage en base64 en MongoDB (simple pour démo — migrer vers S3 en prod)
-    encoded = base64.b64encode(content).decode("utf-8")
+    if len(content) > 5*1024*1024: raise HTTPException(400, "Fichier trop volumineux (max 5 Mo)")
     now = datetime.now(timezone.utc).isoformat()
-    await db.transfers.update_one(
-        {"id": transfer_id},
-        {"$set": {
-            "payment_proof_data": encoded,
-            "payment_proof_filename": file.filename,
-            "payment_proof_content_type": file.content_type,
-            "payment_proof_uploaded_at": now,
-            "updated_at": now
-        }}
-    )
-    return {"message": "Preuve de paiement reçue avec succès", "filename": file.filename}
+    await db.transfers.update_one({"id": transfer_id}, {"$set": {
+        "payment_proof_data": base64.b64encode(content).decode(),
+        "payment_proof_filename": file.filename,
+        "payment_proof_content_type": file.content_type,
+        "payment_proof_uploaded_at": now, "updated_at": now
+    }})
+    return {"message": "Preuve reçue avec succès", "filename": file.filename}
 
 @api_router.get("/transfers/{transfer_id}/proof")
-async def get_payment_proof(transfer_id: str, user: dict = Depends(get_current_user)):
-    """Récupère la preuve de paiement (pour le client ou l'admin)."""
-    query = {"id": transfer_id}
-    if not user.get("is_admin"):
-        query["user_id"] = user["id"]
-    transfer = await db.transfers.find_one(query)
-    if not transfer or not transfer.get("payment_proof_data"):
-        raise HTTPException(status_code=404, detail="Aucune preuve de paiement")
-    return {
-        "filename": transfer.get("payment_proof_filename"),
-        "content_type": transfer.get("payment_proof_content_type"),
-        "data": transfer["payment_proof_data"],
-        "uploaded_at": transfer.get("payment_proof_uploaded_at")
-    }
+async def get_proof(transfer_id: str, user: dict = Depends(get_current_user)):
+    q = {"id": transfer_id}
+    if not user.get("is_admin"): q["user_id"] = user["id"]
+    t = await db.transfers.find_one(q)
+    if not t or not t.get("payment_proof_data"): raise HTTPException(404, "Aucune preuve de paiement")
+    return {"filename": t.get("payment_proof_filename"), "content_type": t.get("payment_proof_content_type"),
+            "data": t["payment_proof_data"], "uploaded_at": t.get("payment_proof_uploaded_at")}
 
-# Route publique : suivi par numéro de tracking (sans authentification)
 @api_router.get("/track/{tracking_number}")
 async def track_transfer(tracking_number: str):
-    transfer = await db.transfers.find_one(
+    t = await db.transfers.find_one(
         {"tracking_number": tracking_number},
-        {"_id": 0, "payment_proof_data": 0, "user_id": 0, "sender_email": 0}
+        {"_id":0,"payment_proof_data":0,"user_id":0,"sender_email":0}
     )
-    if not transfer:
-        raise HTTPException(status_code=404, detail="Numéro de suivi introuvable")
-    s = transfer.get("status", "pending")
-    meta = STATUS_LABELS.get(s, {})
+    if not t: raise HTTPException(404, "Numéro de suivi introuvable")
+    s = t.get("status","pending"); meta = STATUS_LABELS.get(s,{})
     return {
         "tracking_number": tracking_number,
-        "corridor": CORRIDORS.get(transfer["corridor"], {}).get("label", transfer["corridor"]),
-        "send_amount": transfer["send_amount"],
-        "send_currency": transfer["send_currency"],
-        "receive_amount": transfer["receive_amount"],
-        "receive_currency": transfer["receive_currency"],
-        "delivery_method": DELIVERY_METHOD_LABELS.get(transfer["delivery_method"], {}).get("label", transfer["delivery_method"]),
-        "status": s,
-        "status_label": meta.get("label", s),
-        "status_color": meta.get("color", "gray"),
-        "created_at": transfer["created_at"],
-        "updated_at": transfer["updated_at"],
-        "estimated_time": CORRIDORS.get(transfer["corridor"], {}).get("estimated_time", ""),
-        "receiver_mobile_network": transfer.get("receiver_mobile_network"),
+        "corridor": CORRIDORS.get(t["corridor"],{}).get("label", t["corridor"]),
+        "send_amount": t["send_amount"], "send_currency": t["send_currency"],
+        "receive_amount": t["receive_amount"], "receive_currency": t["receive_currency"],
+        "delivery_method": DELIVERY_METHOD_LABELS.get(t["delivery_method"],{}).get("label", t["delivery_method"]),
+        "status": s, "status_label": meta.get("label",s), "status_color": meta.get("color","gray"),
+        "created_at": t["created_at"], "updated_at": t["updated_at"],
+        "estimated_time": CORRIDORS.get(t["corridor"],{}).get("estimated_time",""),
+        "receiver_mobile_network": t.get("receiver_mobile_network"),
     }
 
 # ============================================================
@@ -654,165 +714,89 @@ async def track_transfer(tracking_number: str):
 # ============================================================
 
 @api_router.get("/admin/transfers", response_model=List[TransferResponse])
-async def get_all_transfers(
-    status: Optional[str] = None,
-    corridor: Optional[str] = None,
-    admin: dict = Depends(get_admin_user)
-):
-    query = {}
-    if status:
-        query["status"] = status
-    if corridor:
-        query["corridor"] = corridor
-    transfers = await db.transfers.find(query, {"_id": 0, "payment_proof_data": 0}).sort("created_at", -1).to_list(500)
-    return [TransferResponse(**enrich_transfer(t)) for t in transfers]
+async def get_all_transfers(status: Optional[str]=None, corridor: Optional[str]=None, admin: dict=Depends(get_admin_user)):
+    q = {}
+    if status:   q["status"]   = status
+    if corridor: q["corridor"] = corridor
+    ts = await db.transfers.find(q, {"_id":0,"payment_proof_data":0}).sort("created_at",-1).to_list(500)
+    return [TransferResponse(**enrich_transfer(t)) for t in ts]
 
 @api_router.get("/admin/transfers/{transfer_id}", response_model=TransferResponse)
-async def admin_get_transfer(transfer_id: str, admin: dict = Depends(get_admin_user)):
-    transfer = await db.transfers.find_one({"id": transfer_id}, {"_id": 0, "payment_proof_data": 0})
-    if not transfer:
-        raise HTTPException(status_code=404, detail="Transfert introuvable")
-    return TransferResponse(**enrich_transfer(transfer))
+async def admin_get_transfer(transfer_id: str, admin: dict=Depends(get_admin_user)):
+    t = await db.transfers.find_one({"id": transfer_id}, {"_id":0,"payment_proof_data":0})
+    if not t: raise HTTPException(404, "Transfert introuvable")
+    return TransferResponse(**enrich_transfer(t))
 
 @api_router.put("/admin/transfers/{transfer_id}", response_model=TransferResponse)
-async def update_transfer(
-    transfer_id: str,
-    update: TransferUpdate,
-    admin: dict = Depends(get_admin_user)
-):
-    transfer = await db.transfers.find_one({"id": transfer_id}, {"_id": 0})
-    if not transfer:
-        raise HTTPException(status_code=404, detail="Transfert introuvable")
-
-    current_status = transfer["status"]
-    new_status = update.status
-
-    # Vérification de la transition
-    allowed = ADMIN_TRANSITIONS.get(current_status, [])
-    if new_status not in allowed:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Transition '{current_status}' → '{new_status}' non autorisée. Transitions possibles : {allowed}"
-        )
-
+async def update_transfer(transfer_id: str, update: TransferUpdate, admin: dict=Depends(get_admin_user)):
+    t = await db.transfers.find_one({"id": transfer_id}, {"_id":0})
+    if not t: raise HTTPException(404, "Transfert introuvable")
+    allowed = ADMIN_TRANSITIONS.get(t["status"], [])
+    if update.status not in allowed:
+        raise HTTPException(400, f"Transition '{t['status']}' → '{update.status}' non autorisée. Possibles : {allowed}")
     now = datetime.now(timezone.utc).isoformat()
-    update_data = {"status": new_status, "updated_at": now}
-    if update.admin_notes:
-        update_data["admin_notes"] = update.admin_notes
-    if update.tracking_number:
-        update_data["tracking_number"] = update.tracking_number
-    if update.exchange_rate_applied:
-        update_data["exchange_rate"] = update.exchange_rate_applied
+    patch = {"status": update.status, "updated_at": now}
+    if update.admin_notes:          patch["admin_notes"]   = update.admin_notes
+    if update.tracking_number:      patch["tracking_number"] = update.tracking_number
+    if update.exchange_rate_applied: patch["exchange_rate"] = update.exchange_rate_applied
+    await db.transfers.update_one({"id": transfer_id}, {"$set": patch})
+    updated = await db.transfers.find_one({"id": transfer_id}, {"_id":0,"payment_proof_data":0})
 
-    await db.transfers.update_one({"id": transfer_id}, {"$set": update_data})
-    updated = await db.transfers.find_one({"id": transfer_id}, {"_id": 0, "payment_proof_data": 0})
+    # Email de complétion (non bloquant)
+    if update.status == "completed" and updated.get("sender_email"):
+        subj, html = email_completed(updated)
+        await send_email(updated["sender_email"], subj, html)
+
     return TransferResponse(**enrich_transfer(updated))
 
 @api_router.get("/admin/users")
-async def get_all_users(admin: dict = Depends(get_admin_user)):
-    users = await db.users.find(
-        {"is_admin": False}, {"_id": 0, "password": 0}
-    ).sort("created_at", -1).to_list(500)
-    return users
+async def get_all_users(admin: dict=Depends(get_admin_user)):
+    return await db.users.find({"is_admin":False},{"_id":0,"password":0}).sort("created_at",-1).to_list(500)
 
 @api_router.get("/admin/stats")
-async def get_admin_stats(admin: dict = Depends(get_admin_user)):
-    total = await db.transfers.count_documents({})
-    by_status = {}
-    for s in VALID_STATUSES:
-        by_status[s] = await db.transfers.count_documents({"status": s})
-    total_users = await db.users.count_documents({"is_admin": False})
-
-    pipeline_cad = [
-        {"$match": {"send_currency": "CAD", "status": "completed"}},
-        {"$group": {"_id": None, "total": {"$sum": "$send_amount"}, "fees": {"$sum": "$fee"}}}
-    ]
-    pipeline_xof = [
-        {"$match": {"send_currency": "XOF", "status": "completed"}},
-        {"$group": {"_id": None, "total": {"$sum": "$send_amount"}, "fees": {"$sum": "$fee"}}}
-    ]
-    vol_cad = await db.transfers.aggregate(pipeline_cad).to_list(1)
-    vol_xof = await db.transfers.aggregate(pipeline_xof).to_list(1)
-
-    # Volume des 30 derniers jours par corridor
-    thirty_days_ago = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
-    recent_pipeline = [
-        {"$match": {"created_at": {"$gte": thirty_days_ago}}},
-        {"$group": {"_id": "$corridor", "count": {"$sum": 1}, "volume_sent": {"$sum": "$send_amount"}}}
-    ]
-    recent = await db.transfers.aggregate(recent_pipeline).to_list(10)
-
+async def get_admin_stats(admin: dict=Depends(get_admin_user)):
+    total      = await db.transfers.count_documents({})
+    by_status  = {s: await db.transfers.count_documents({"status":s}) for s in VALID_STATUSES}
+    total_users= await db.users.count_documents({"is_admin":False})
+    vol_cad    = await db.transfers.aggregate([{"$match":{"send_currency":"CAD","status":"completed"}},{"$group":{"_id":None,"total":{"$sum":"$send_amount"},"fees":{"$sum":"$fee"}}}]).to_list(1)
+    vol_xof    = await db.transfers.aggregate([{"$match":{"send_currency":"XOF","status":"completed"}},{"$group":{"_id":None,"total":{"$sum":"$send_amount"},"fees":{"$sum":"$fee"}}}]).to_list(1)
+    thirty     = (datetime.now(timezone.utc)-timedelta(days=30)).isoformat()
+    recent     = await db.transfers.aggregate([{"$match":{"created_at":{"$gte":thirty}}},{"$group":{"_id":"$corridor","count":{"$sum":1},"volume_sent":{"$sum":"$send_amount"}}}]).to_list(10)
     return {
-        "total_transfers": total,
-        "by_status": by_status,
-        "total_users": total_users,
+        "total_transfers":total,"by_status":by_status,"total_users":total_users,
         "volume_cad_completed": vol_cad[0]["total"] if vol_cad else 0,
-        "fees_cad_collected": vol_cad[0]["fees"] if vol_cad else 0,
+        "fees_cad_collected":   vol_cad[0]["fees"]  if vol_cad else 0,
         "volume_xof_completed": vol_xof[0]["total"] if vol_xof else 0,
-        "fees_xof_collected": vol_xof[0]["fees"] if vol_xof else 0,
+        "fees_xof_collected":   vol_xof[0]["fees"]  if vol_xof else 0,
         "last_30_days_by_corridor": recent,
     }
 
 @api_router.put("/admin/corridors/{corridor_key}/rate")
-async def update_rate(corridor_key: str, body: RateUpdate, admin: dict = Depends(get_admin_user)):
-    if corridor_key not in CORRIDORS:
-        raise HTTPException(status_code=404, detail="Corridor introuvable")
-    if body.rate <= 0:
-        raise HTTPException(status_code=400, detail="Le taux doit être positif")
-    if corridor_key == "canada_to_benin":
-        CORRIDORS[corridor_key]["rate_xof_per_cad"] = body.rate
-    else:
-        CORRIDORS[corridor_key]["rate_cad_per_xof"] = body.rate
-    return {"message": "Taux mis à jour", "corridor": corridor_key, "rate": body.rate}
+async def update_rate_override(corridor_key: str, body: RateUpdate, admin: dict=Depends(get_admin_user)):
+    """Permet à l'admin de forcer un taux de secours en DB (utilisé si l'API externe est indisponible)."""
+    if corridor_key not in CORRIDORS: raise HTTPException(404, "Corridor introuvable")
+    if body.rate <= 0:                raise HTTPException(400, "Le taux doit être positif")
+    # Forcer le taux en DB et invalider le cache mémoire
+    await db.settings.update_one({"key":"rate_cad_xof"},{"$set":{"value":body.rate,"updated_at":datetime.now(timezone.utc).isoformat()}},upsert=True)
+    _rate_cache["rate"] = None  # invalide le cache pour forcer une re-fetch
+    return {"message": "Taux de secours mis à jour en DB", "corridor": corridor_key, "rate": body.rate}
 
 @api_router.post("/admin/create-admin")
 async def create_admin_user():
-    existing = await db.users.find_one({"email": "admin@prestigemoneytransfer.ca"})
-    if existing:
+    if await db.users.find_one({"email":"admin@prestigemoneytransfer.ca"}):
         return {"message": "Admin déjà existant"}
-    admin_id = str(uuid.uuid4())
-    now = datetime.now(timezone.utc).isoformat()
-    doc = {
-        "id": admin_id,
-        "email": "admin@prestigemoneytransfer.ca",
-        "password": hash_password("PrestigeAdmin2024!"),
-        "full_name": "Admin Prestige",
-        "phone": "+1 514 000 0000",
-        "country": "Canada",
-        "is_admin": True,
-        "created_at": now
-    }
+    uid = str(uuid.uuid4()); now = datetime.now(timezone.utc).isoformat()
+    doc = {"id":uid,"email":"admin@prestigemoneytransfer.ca","password":hash_password("PrestigeAdmin2024!"),
+           "full_name":"Admin Prestige","phone":"+1 514 000 0000","country":"Canada","is_admin":True,"created_at":now}
     await db.users.insert_one(doc)
-    return {"message": "Admin créé", "email": doc["email"], "password": "PrestigeAdmin2024!"}
-
+    return {"message":"Admin créé","email":doc["email"],"password":"PrestigeAdmin2024!"}
 
 @api_router.post("/admin/migrate-transfers")
-async def migrate_old_transfers(admin: dict = Depends(get_admin_user)):
-    """Migre les anciens transferts qui manquent de champs sender_* ou corridor."""
-    result = await db.transfers.update_many(
-        {"sender_name": {"$exists": False}},
-        {"$set": {
-            "sender_name": "Inconnu",
-            "sender_email": "",
-            "sender_phone": "",
-            "sender_country": "",
-        }}
-    )
-    # Corriger aussi les transferts sans corridor (anciens providers)
-    result2 = await db.transfers.update_many(
-        {"corridor": {"$exists": False}},
-        {"$set": {"corridor": "canada_to_benin"}}
-    )
-    # Corriger send_currency / receive_currency manquants
-    result3 = await db.transfers.update_many(
-        {"send_currency": {"$exists": False}},
-        {"$set": {"send_currency": "CAD", "receive_currency": "XOF"}}
-    )
-    return {
-        "migrated_sender_fields": result.modified_count,
-        "migrated_corridor": result2.modified_count,
-        "migrated_currency": result3.modified_count,
-    }
+async def migrate_old_transfers(admin: dict=Depends(get_admin_user)):
+    r1 = await db.transfers.update_many({"sender_name":{"$exists":False}},{"$set":{"sender_name":"Inconnu","sender_email":"","sender_phone":"","sender_country":""}})
+    r2 = await db.transfers.update_many({"corridor":{"$exists":False}},{"$set":{"corridor":"canada_to_benin"}})
+    r3 = await db.transfers.update_many({"send_currency":{"$exists":False}},{"$set":{"send_currency":"CAD","receive_currency":"XOF"}})
+    return {"migrated_sender_fields":r1.modified_count,"migrated_corridor":r2.modified_count,"migrated_currency":r3.modified_count}
 
 # ============================================================
 # HEALTH
@@ -820,11 +804,11 @@ async def migrate_old_transfers(admin: dict = Depends(get_admin_user)):
 
 @api_router.get("/")
 async def root():
-    return {"message": "Prestige Money Transfer API", "status": "running", "version": "2.0"}
+    return {"message":"Prestige Money Transfer API","status":"running","version":"3.0"}
 
 @api_router.get("/health")
 async def health():
-    return {"status": "healthy"}
+    return {"status":"healthy"}
 
 # ============================================================
 # APP SETUP
@@ -832,81 +816,8 @@ async def health():
 
 app.include_router(api_router)
 
-
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
     client.close()
-
-@app.get("/")
-def read_root():
-    return {"message": "Prestige Money Transfer — Backend v2.0"}
-
-MTN_PREFIXES = {
-    "0194", "0195", "0196",
-    "0197", "0198", "0199"
-}
-
-MOOV_PREFIXES = {
-    "0140", "0141", "0142",
-    "0143", "0144", "0145",
-    "0146", "0147", "0148",
-    "0149"
-}
-
-def validate_benin_mobile_number(phone: str, network: str = None):
-    """
-    Validation des numéros béninois.
-    Formats acceptés :
-    +2290197123456
-    2290197123456
-    0197123456
-    97123456
-    """
-
-    if not phone:
-        raise HTTPException(
-            status_code=400,
-            detail="Numéro de téléphone requis"
-        )
-
-    phone = re.sub(r"\s+", "", phone)
-
-    if phone.startswith("+229"):
-        phone = phone[4:]
-    elif phone.startswith("229"):
-        phone = phone[3:]
-
-    # Ancien format 8 chiffres
-    if len(phone) == 8:
-        phone = "01" + phone
-
-    if not re.fullmatch(r"01\d{8}", phone):
-        raise HTTPException(
-            status_code=400,
-            detail="Numéro béninois invalide"
-        )
-
-    prefix = phone[:4]
-
-    detected_network = None
-
-    if prefix in MTN_PREFIXES:
-        detected_network = "mtn"
-    elif prefix in MOOV_PREFIXES:
-        detected_network = "moov"
-
-    if network and detected_network and network != detected_network:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Le numéro appartient au réseau {detected_network.upper()} et non {network.upper()}"
-        )
-
-    return {
-        "normalized_phone": f"+229{phone}",
-        "network": detected_network
-    }
