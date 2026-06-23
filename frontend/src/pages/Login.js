@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { Eye, EyeOff, Mail, Lock, ArrowLeft } from 'lucide-react';
 import logoImg from '../images/white_logo_Prestige_horizon_bg.png';
-import officeBg from '../images/phinc-office.png';
+import officeBg from '../images/amazone2.jpg';
 import React, { useEffect } from "react";
 
 const LOGO_URL = logoImg;
