@@ -155,13 +155,13 @@ const Dashboard = () => {
         {/* ── Header ── */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-10">
           <div>
-            <p className="text-[#A1A1AA] text-sm mb-1">{t.welcome}</p>
+            <p className="text-white text-sm mb-1">{t.welcome}</p>
             <h1 className="text-3xl font-bold text-white">{user?.full_name?.split(' ')[0] || t.userDefault} 👋</h1>
           </div>
           <div className="flex items-center gap-3">
             <button
               onClick={() => fetchTransfers(true)}
-              className="p-2 rounded-lg border border-white/10 text-[#A1A1AA] hover:text-white hover:border-white/20 transition-all"
+              className="p-2 rounded-lg border border-white/10 text-white hover:text-white hover:border-white/20 transition-all"
               disabled={refreshing}
             >
               <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
