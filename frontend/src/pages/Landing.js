@@ -126,7 +126,7 @@ const LiveCalculator = ({ lang, t }) => {
   const calc = useCallback(async () => {
     const n = parseFloat(amount);
     if (!n || n <= 0) return;
-    setLoading(true); // Ligne corrigée ici (la ligne "loading.true;" a été supprimée)
+    setLoading(true);
     try {
       const { data } = await axios.get(
         `${API_URL}/api/corridors/${corridor}/calculate?send_amount=${n}`

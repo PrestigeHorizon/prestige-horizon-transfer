@@ -35,6 +35,33 @@ uvicorn server:app --reload --port 8000
 - backend : uvicorn server:app --reload --port 8000
 - frontend : npm start
 
+# Endpoint pour créer un compte Administrateur:
+db.users.insertOne({
+    email: "admin@prestigemoneytransfer.ca",
+    password: "$2b$12....", // mot de passe bcrypt haché
+    first_name: "Admin",
+    last_name: "Prestige",
+    role: "admin",
+    is_active: true,
+    created_at: new Date()
+})
+
+db.users.insertOne({
+    id: "ADMIN-001",
+    email: "admin@prestigemoneytransfer.ca",
+    password: "$2b$12$xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    full_name: "Admin Prestige",
+    phone: "+1 514 000 0000",
+    country: "Canada",
+    is_admin: true,
+    created_at: new Date().toISOString()
+})
+
+# En cas de perte de tous tes comptes admin et que tu as encore accès à l'API, le plus simple est d'appeler :
+POST /api/admin/create-admin
+curl -X POST https://prestige-money-transfer-api-onrender-com.onrender.com/api/admin/create-admin
+Cela recréera automatiquement --------- Email : admin@prestigemoneytransfer.ca Mot de passe : PrestigeAdmin2024!
+
 # --------------------------------------------------------------------------------------------------------------------------------------------------
 Troubleshooting "Scripts are Disabled"
 If you get an error saying "running scripts is disabled on this system," Windows is blocking the activation script for security. You can fix this for your current session by running:

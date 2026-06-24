@@ -200,7 +200,7 @@ def email_completed(t: dict) -> tuple[str, str]:
 # Cache en mémoire : évite d'appeler l'API à chaque transfert
 _rate_cache: dict = {"rate": None, "fetched_at": None}
 RATE_CACHE_TTL_MINUTES = 30  # rafraîchissement toutes les 30 min
-RATE_FALLBACK_CAD_XOF  = 445.0  # valeur de secours si l'API est indisponible
+RATE_FALLBACK_CAD_XOF  = 400.0  # valeur de secours si l'API est indisponible
 
 async def fetch_live_rate_cad_xof() -> float:
     """
