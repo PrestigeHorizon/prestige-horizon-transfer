@@ -25,13 +25,19 @@ load_dotenv(ROOT_DIR / '.env')
 
 app = FastAPI(title="Prestige Money Transfer API")
 
-origins = os.environ.get("CORS_ORIGINS", "http://localhost:3000").split(",")
+origins = [
+    "http://localhost:3000",  # Frontend local (souvent port 3000 ou 5173 pour Vite)
+    "http://localhost:5173",
+    "https://prestige-horizon-transfer.onrender.com", # URL Frontend
+]
+
+# 2. Ajoutez le middleware à l'application
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=origins,          # Autorise les domaines de la liste
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["*"],            # Autorise toutes les méthodes (GET, POST, PUT, DELETE, etc.)
+    allow_headers=["*"],            # Autorise tous les headers (y compris Authorization, Content-Type, etc.)
 )
 
 # ============================================================
