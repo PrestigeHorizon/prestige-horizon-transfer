@@ -11,18 +11,126 @@ import { toast } from 'sonner';
 import {
   ArrowRight, Check, Loader2, ArrowLeft, CreditCard,
   Building2, ChevronRight, Info, Upload, Copy, CheckCircle2,
-  FileText, Smartphone, ExternalLink,
+  FileText, Smartphone, Languages
 } from 'lucide-react';
 import mtnLogo from '../images/providers/mtn-momo.png';
 import moovLogo from '../images/providers/moov-money.png';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
+/* ─── Dictionnaire des langues ─── */
+const DICTIONARY = {
+  fr: {
+    title: 'Nouveau transfert',
+    subtitle: 'Canada ↔ Bénin — rapide, sécurisé, validé manuellement',
+    steps: ['Direction & paiement', 'Receveur', 'Confirmation', 'Paiement'],
+    direction: 'Direction du transfert',
+    paymentMethod: 'Méthode de paiement (vous)',
+    amountToSend: 'Montant à envoyer',
+    minMax: 'Min {min} · Max {max}',
+    calculating: 'Calcul en cours…',
+    sentAmount: 'Montant envoyé',
+    fees: 'Frais de service',
+    totalPay: 'Total à payer',
+    receiverGets: 'Le receveur reçoit',
+    rate: 'Taux appliqué',
+    nextReceiver: 'Continuer — Infos du receveur',
+    back: 'Retour',
+    nextSummary: 'Vérifier le récapitulatif',
+    deliveryMethod: 'Mode de réception (receveur)',
+    mobileNum: 'Numéro Mobile Money',
+    bankCoords: 'Coordonnées bancaires / email',
+    receiverInfos: 'Informations du receveur',
+    fullName: 'Nom complet *',
+    phoneLabel: 'Numéro {provider} Mobile Money *',
+    intlFormat: 'Format international (+229 pour Bénin)',
+    bankName: 'Nom de la banque *',
+    accountNum: 'Numéro de compte *',
+    ibanSwift: 'IBAN / Code SWIFT (optionnel)',
+    interacEmail: 'Email Interac du receveur *',
+    notes: 'Notes (optionnel)',
+    notesPlaceholder: 'Message pour notre équipe ou précisions…',
+    summaryTitle: 'Récapitulatif du transfert',
+    receiverText: 'Receveur',
+    disclaimer: 'Après confirmation, vous recevrez les instructions de paiement détaillées et un numéro de suivi unique. Aucun argent ne sera débité automatiquement.',
+    creating: 'Création en cours…',
+    confirmTransfer: 'Confirmer le transfert',
+    successTitle: 'Transfert créé avec succès !',
+    trackingLabel: 'Votre numéro de suivi :',
+    trackingNote: 'Conservez ce numéro pour suivre votre transfert',
+    uploadTitle: 'Téléverser votre preuve de paiement',
+    uploadSuccess: 'Preuve envoyée avec succès !',
+    uploadSuccessSub: 'Notre équipe va valider votre paiement et traiter votre transfert.',
+    uploadInstructions: "Une fois le paiement effectué, uploadez votre capture d'écran ou reçu (JPG, PNG, PDF — max 5 Mo).",
+    clickToSelect: 'Cliquez pour sélectionner votre fichier',
+    clickToChange: 'cliquez pour changer',
+    sending: 'Envoi en cours…',
+    sendProof: 'Envoyer la preuve',
+    errorCorridors: 'Impossible de charger les corridors',
+    successCreated: 'Transfert créé ! Suivez les instructions de paiement.',
+    errorCreation: 'Erreur lors de la création',
+    successProof: 'Preuve envoyée ! Notre équipe va valider votre paiement.',
+    errorProof: "Erreur lors de l'envoi de la preuve"
+  },
+  en: {
+    title: 'New Transfer',
+    subtitle: 'Canada ↔ Benin — fast, secure, manually verified',
+    steps: ['Direction & Payment', 'Receiver', 'Confirmation', 'Payment'],
+    direction: 'Transfer Direction',
+    paymentMethod: 'Payment Method (You)',
+    amountToSend: 'Amount to send',
+    minMax: 'Min {min} · Max {max}',
+    calculating: 'Calculating…',
+    sentAmount: 'Amount sent',
+    fees: 'Service fees',
+    totalPay: 'Total to pay',
+    receiverGets: 'Receiver gets',
+    rate: 'Applied rate',
+    nextReceiver: 'Continue — Receiver details',
+    back: 'Back',
+    nextSummary: 'Review summary',
+    deliveryMethod: 'Delivery Method (Receiver)',
+    mobileNum: 'Mobile Money Number',
+    bankCoords: 'Bank details / email',
+    receiverInfos: 'Receiver Information',
+    fullName: 'Full Name *',
+    phoneLabel: '{provider} Mobile Money Number *',
+    intlFormat: 'International format (+229 for Benin)',
+    bankName: 'Bank Name *',
+    accountNum: 'Account Number *',
+    ibanSwift: 'IBAN / SWIFT Code (optional)',
+    interacEmail: "Receiver's Interac Email *",
+    notes: 'Notes (optional)',
+    notesPlaceholder: 'Message for our team or specifications…',
+    summaryTitle: 'Transfer Summary',
+    receiverText: 'Receiver',
+    disclaimer: 'After confirmation, you will receive detailed payment instructions and a unique tracking number. No money will be automatically debited.',
+    creating: 'Creating…',
+    confirmTransfer: 'Confirm transfer',
+    successTitle: 'Transfer successfully created!',
+    trackingLabel: 'Your tracking number:',
+    trackingNote: 'Keep this number to track your transfer',
+    uploadTitle: 'Upload your proof of payment',
+    uploadSuccess: 'Proof successfully sent!',
+    uploadSuccessSub: 'Our team will validate your payment and process your transfer.',
+    uploadInstructions: 'Once payment is made, upload your screenshot or receipt (JPG, PNG, PDF — max 5 MB).',
+    clickToSelect: 'Click to select your file',
+    clickToChange: 'click to change',
+    sending: 'Sending…',
+    sendProof: 'Send proof',
+    errorCorridors: 'Unable to load corridors',
+    successCreated: 'Transfer created! Follow the payment instructions.',
+    errorCreation: 'Error during creation',
+    successProof: 'Proof sent! Our team will validate your payment.',
+    errorProof: 'Error while sending proof'
+  }
+};
+
 /* ─── Helpers ─── */
 const DELIVERY_ASSETS = {
   mtn:           { logo: mtnLogo,  color: '#FFCC00', label: 'MTN Mobile Money' },
   moov:          { logo: moovLogo, color: '#00a51b', label: 'Moov Money' },
-  bank_transfer: { logo: null,     color: '#D4AF37', label: 'Virement bancaire', initials: 'VB' },
+  bank_transfer: { logo: null,     color: '#D4AF37', label: 'Virement bancaire / Bank transfer', initials: 'VB' },
   interac:       { logo: null,     color: '#D4AF37', label: 'Interac / Bancaire', initials: 'IC' },
 };
 const PAYMENT_ICONS = { interac: Building2, crypto_usdc: CreditCard, bank_transfer: Building2 };
@@ -31,12 +139,10 @@ const fmtCAD = (n) => new Intl.NumberFormat('fr-CA', { style: 'currency', curren
 const fmtXOF = (n) => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'XOF', minimumFractionDigits: 0 }).format(n);
 const fmt    = (amount, currency) => currency === 'CAD' ? fmtCAD(amount) : fmtXOF(amount);
 
-const STEP_LABELS = ['Direction & paiement', 'Receveur', 'Confirmation', 'Paiement'];
-
 /* ─── Step bar ─── */
-const StepBar = ({ step }) => (
+const StepBar = ({ step, t }) => (
   <div className="flex items-start gap-0 mb-10">
-    {STEP_LABELS.map((label, i) => {
+    {t.steps.map((label, i) => {
       const s = i + 1;
       const done   = step > s;
       const active = step === s;
@@ -54,7 +160,7 @@ const StepBar = ({ step }) => (
               {label}
             </span>
           </div>
-          {s < STEP_LABELS.length && (
+          {s < t.steps.length && (
             <div className={`flex-1 h-px mx-2 mt-[-14px] ${step > s ? 'bg-[#D4AF37]' : 'bg-[#1A1A1A]'}`} />
           )}
         </div>
@@ -104,18 +210,20 @@ const CopyBtn = ({ text }) => {
 };
 
 /* ════════════════════════════════════════════════════ */
-const NewTransfer = () => {
+export const NewTransfer = () => {
   const navigate = useNavigate();
+  const [lang, setLang] = useState('fr'); // 'fr' ou 'en'
+  const t = DICTIONARY[lang];
 
   const [step,       setStep]       = useState(1);
   const [corridors,  setCorridors]  = useState([]);
   const [loading,    setLoading]    = useState(false);
   const [calcLoading,setCalcLoading]= useState(false);
   const [calculation,setCalculation]= useState(null);
-  const [created,    setCreated]    = useState(null);   // transfer doc après POST
+  const [created,    setCreated]    = useState(null);
 
   /* upload proof state */
-  const [proofFile,    setProofFile]    = useState(null);
+  const [proofFile,      setProofFile]      = useState(null);
   const [proofUploading, setProofUploading] = useState(false);
   const [proofUploaded,  setProofUploaded]  = useState(false);
   const fileRef = useRef(null);
@@ -135,8 +243,8 @@ const NewTransfer = () => {
   useEffect(() => {
     axios.get(`${API_URL}/api/corridors`)
       .then((r) => setCorridors(r.data))
-      .catch(() => toast.error('Impossible de charger les corridors'));
-  }, []);
+      .catch(() => toast.error(t.errorCorridors));
+  }, [t.errorCorridors]);
 
   const calculate = useCallback(async () => {
     if (!form.corridor || !form.send_amount || parseFloat(form.send_amount) <= 0) {
@@ -167,7 +275,6 @@ const NewTransfer = () => {
     (!needsBank    || (form.receiver_bank_name && form.receiver_bank_account)) &&
     (!needsInterac || form.receiver_interac_email);
 
-  /* ── Submit (step 3 → 4) ── */
   const handleSubmit = async () => {
     setLoading(true);
     try {
@@ -191,15 +298,14 @@ const NewTransfer = () => {
       });
       setCreated(data);
       setStep(4);
-      toast.success('Transfert créé ! Suivez les instructions de paiement.');
+      toast.success(t.successCreated);
     } catch (err) {
-      toast.error(err.response?.data?.detail || 'Erreur lors de la création');
+      toast.error(err.response?.data?.detail || t.errorCreation);
     } finally {
       setLoading(false);
     }
   };
 
-  /* ── Upload proof ── */
   const handleProofUpload = async () => {
     if (!proofFile || !created) return;
     setProofUploading(true);
@@ -211,32 +317,44 @@ const NewTransfer = () => {
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' },
       });
       setProofUploaded(true);
-      toast.success('Preuve envoyée ! Notre équipe va valider votre paiement.');
+      toast.success(t.successProof);
     } catch (err) {
-      toast.error(err.response?.data?.detail || "Erreur lors de l'envoi de la preuve");
+      toast.error(err.response?.data?.detail || t.errorProof);
     } finally {
       setProofUploading(false);
     }
   };
 
-  /* ══════════════════ RENDER ══════════════════ */
   return (
     <div className="min-h-screen bg-[#050505]" data-testid="new-transfer-page">
-      <Navbar />
+      <Navbar lang={lang} setLang={setLang} />
 
       <main className="pt-24 pb-16 px-4 sm:px-6 lg:px-8 max-w-2xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-white">Nouveau transfert</h1>
-          <p className="text-[#A1A1AA] mt-1">Canada ↔ Bénin — rapide, sécurisé, validé manuellement</p>
+        
+        {/* Header avec bouton de langue */}
+        <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-white">{t.title}</h1>
+            <p className="text-[#A1A1AA] mt-1">{t.subtitle}</p>
+          </div>
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => setLang(l => l === 'fr' ? 'en' : 'fr')}
+            className="self-start sm:self-center border-white/10 text-white hover:bg-white/5 flex items-center gap-2"
+          >
+            <Languages className="w-4 h-4 text-[#D4AF37]" />
+            <span>{lang === 'fr' ? 'English' : 'Français'}</span>
+          </Button>
         </div>
 
-        <StepBar step={step} />
+        <StepBar step={step} t={t} />
 
-        {/* ─────────────── STEP 1 : Corridor + paiement + montant ─────────────── */}
+        {/* ─────────────── STEP 1 ─────────────── */}
         {step === 1 && (
           <div className="space-y-8 animate-fade-in">
             <div className="space-y-3">
-              <Label className="text-[#A1A1AA] uppercase text-xs tracking-wider">Direction du transfert</Label>
+              <Label className="text-[#A1A1AA] uppercase text-xs tracking-wider">{t.direction}</Label>
               <div className="grid gap-3">
                 {corridors.map((c) => (
                   <SelectCard
@@ -267,7 +385,7 @@ const NewTransfer = () => {
 
             {selectedCorridor && (
               <div className="space-y-3">
-                <Label className="text-[#A1A1AA] uppercase text-xs tracking-wider">Méthode de paiement (vous)</Label>
+                <Label className="text-[#A1A1AA] uppercase text-xs tracking-wider">{t.paymentMethod}</Label>
                 <div className="grid gap-3">
                   {selectedCorridor.payment_methods.map((pm) => {
                     const Icon = PAYMENT_ICONS[pm.key] || CreditCard;
@@ -293,7 +411,7 @@ const NewTransfer = () => {
             {form.payment_method && (
               <div className="space-y-3">
                 <Label className="text-[#A1A1AA] uppercase text-xs tracking-wider">
-                  Montant à envoyer ({selectedCorridor?.from_currency})
+                  {t.amountToSend} ({selectedCorridor?.from_currency})
                 </Label>
                 <Input
                   type="number"
@@ -308,8 +426,9 @@ const NewTransfer = () => {
                 {selectedCorridor && (
                   <p className="text-[#A1A1AA] text-xs flex items-center gap-1 justify-center">
                     <Info className="w-3 h-3" />
-                    Min {fmt(selectedCorridor.min_amount, selectedCorridor.from_currency)} ·
-                    Max {fmt(selectedCorridor.max_amount, selectedCorridor.from_currency)}
+                    {t.minMax
+                      .replace('{min}', fmt(selectedCorridor.min_amount, selectedCorridor.from_currency))
+                      .replace('{max}', fmt(selectedCorridor.max_amount, selectedCorridor.from_currency))}
                   </p>
                 )}
               </div>
@@ -318,20 +437,20 @@ const NewTransfer = () => {
             {calcLoading && (
               <div className="flex items-center justify-center py-4 gap-2 text-[#A1A1AA]">
                 <Loader2 className="w-4 h-4 animate-spin" />
-                <span className="text-sm">Calcul en cours…</span>
+                <span className="text-sm">{t.calculating}</span>
               </div>
             )}
 
             {calculation && !calcLoading && (
               <Card className="bg-[#0A0A0A] border-[#D4AF37]/20">
                 <CardContent className="p-5 space-y-3">
-                  <Row label="Montant envoyé"   value={fmt(form.send_amount, calculation.send_currency)} />
-                  <Row label="Frais de service" value={fmt(calculation.fee, calculation.send_currency)} />
+                  <Row label={t.sentAmount}   value={fmt(form.send_amount, calculation.send_currency)} />
+                  <Row label={t.fees} value={fmt(calculation.fee, calculation.send_currency)} />
                   <div className="h-px bg-white/10" />
-                  <Row label="Total à payer"    value={fmt(calculation.total_charged, calculation.send_currency)} bold />
+                  <Row label={t.totalPay}    value={fmt(calculation.total_charged, calculation.send_currency)} bold />
                   <div className="h-px bg-white/10" />
-                  <Row label="Le receveur reçoit" value={fmt(calculation.receive_amount, calculation.receive_currency)} gold />
-                  <Row label="Taux appliqué" value={`1 ${calculation.send_currency} = ${calculation.exchange_rate} ${calculation.receive_currency}`} />
+                  <Row label={t.receiverGets} value={fmt(calculation.receive_amount, calculation.receive_currency)} gold />
+                  <Row label={t.rate} value={`1 ${calculation.send_currency} = ${calculation.exchange_rate} ${calculation.receive_currency}`} />
                 </CardContent>
               </Card>
             )}
@@ -342,17 +461,17 @@ const NewTransfer = () => {
               className="w-full bg-[#D4AF37] text-black hover:bg-[#B59326] font-semibold py-6"
               data-testid="step-1-next"
             >
-              Continuer — Infos du receveur
+              {t.nextReceiver}
               <ArrowRight className="w-5 h-5 ml-2" />
             </Button>
           </div>
         )}
 
-        {/* ─────────────── STEP 2 : Receveur ─────────────── */}
+        {/* ─────────────── STEP 2 ─────────────── */}
         {step === 2 && (
           <div className="space-y-6 animate-fade-in" data-testid="step-2">
             <div className="space-y-3">
-              <Label className="text-[#A1A1AA] uppercase text-xs tracking-wider">Mode de réception (receveur)</Label>
+              <Label className="text-[#A1A1AA] uppercase text-xs tracking-wider">{t.deliveryMethod}</Label>
               <div className="grid gap-3">
                 {selectedCorridor?.delivery_methods?.map((dm) => {
                   const asset = DELIVERY_ASSETS[dm.key] || {};
@@ -369,7 +488,7 @@ const NewTransfer = () => {
                     >
                       <div className="flex items-center gap-3">
                         {asset.logo ? (
-                          <img src={asset.logo} alt={asset.label} className="h-8 w-auto object-contain" />
+                          <img src={asset.logo} alt={asset.label || dm.label} className="h-8 w-auto object-contain" />
                         ) : (
                           <div className="w-9 h-9 rounded-lg flex items-center justify-center text-xs font-bold shrink-0"
                             style={{ background: `${asset.color}20`, color: asset.color }}>
@@ -377,9 +496,9 @@ const NewTransfer = () => {
                           </div>
                         )}
                         <div>
-                          <div className="text-white font-medium">{asset.label || dm.label}</div>
+                          <div className="text-white font-medium">{lang === 'fr' ? (asset.label || dm.label) : (dm.label || asset.label)}</div>
                           <div className="text-[#A1A1AA] text-xs">
-                            {['mtn', 'moov'].includes(dm.key) ? 'Numéro Mobile Money' : 'Coordonnées bancaires / email'}
+                            {['mtn', 'moov'].includes(dm.key) ? t.mobileNum : t.bankCoords}
                           </div>
                         </div>
                         {form.delivery_method === dm.key && <Check className="w-4 h-4 text-[#D4AF37] ml-auto" />}
@@ -392,41 +511,41 @@ const NewTransfer = () => {
 
             <Card className="bg-[#0F0F0F] border-white/10">
               <CardHeader>
-                <CardTitle className="text-white text-base">Informations du receveur</CardTitle>
+                <CardTitle className="text-white text-base">{t.receiverInfos}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <Label className="text-[#A1A1AA] text-sm">Nom complet *</Label>
-                  <Input placeholder="Prénom Nom du receveur" value={form.receiver_name} onChange={set('receiver_name')}
+                  <Label className="text-[#A1A1AA] text-sm">{t.fullName}</Label>
+                  <Input placeholder="John Doe" value={form.receiver_name} onChange={set('receiver_name')}
                     className="mt-1.5 bg-[#1A1A1A] border-white/10 focus:border-[#D4AF37] text-white" data-testid="receiver-name" />
                 </div>
 
                 {needsPhone && (
                   <div>
                     <Label className="text-[#A1A1AA] text-sm">
-                      Numéro {form.delivery_method === 'mtn' ? 'MTN' : 'Moov'} Mobile Money *
+                      {t.phoneLabel.replace('{provider}', form.delivery_method === 'mtn' ? 'MTN' : 'Moov')}
                     </Label>
                     <Input placeholder="+229 01 XX XX XX XX" value={form.receiver_phone} onChange={set('receiver_phone')}
                       type="tel" className="mt-1.5 bg-[#1A1A1A] border-white/10 focus:border-[#D4AF37] text-white" data-testid="receiver-phone" />
-                    <p className="text-[#555] text-xs mt-1">Format international (+229 pour Bénin)</p>
+                    <p className="text-[#555] text-xs mt-1">{t.intlFormat}</p>
                   </div>
                 )}
 
                 {needsBank && (
                   <>
                     <div>
-                      <Label className="text-[#A1A1AA] text-sm">Nom de la banque *</Label>
-                      <Input placeholder="Ex : Banque of Africa, Ecobank…" value={form.receiver_bank_name} onChange={set('receiver_bank_name')}
+                      <Label className="text-[#A1A1AA] text-sm">{t.bankName}</Label>
+                      <Input placeholder="Ecobank..." value={form.receiver_bank_name} onChange={set('receiver_bank_name')}
                         className="mt-1.5 bg-[#1A1A1A] border-white/10 focus:border-[#D4AF37] text-white" />
                     </div>
                     <div>
-                      <Label className="text-[#A1A1AA] text-sm">Numéro de compte *</Label>
-                      <Input placeholder="Numéro de compte bancaire" value={form.receiver_bank_account} onChange={set('receiver_bank_account')}
+                      <Label className="text-[#A1A1AA] text-sm">{t.accountNum}</Label>
+                      <Input value={form.receiver_bank_account} onChange={set('receiver_bank_account')}
                         className="mt-1.5 bg-[#1A1A1A] border-white/10 focus:border-[#D4AF37] text-white" />
                     </div>
                     <div>
-                      <Label className="text-[#A1A1AA] text-sm">IBAN / Code SWIFT (optionnel)</Label>
-                      <Input placeholder="BJ66 BJ00…" value={form.receiver_bank_iban} onChange={set('receiver_bank_iban')}
+                      <Label className="text-[#A1A1AA] text-sm">{t.ibanSwift}</Label>
+                      <Input placeholder="BJ66..." value={form.receiver_bank_iban} onChange={set('receiver_bank_iban')}
                         className="mt-1.5 bg-[#1A1A1A] border-white/10 focus:border-[#D4AF37] text-white" />
                     </div>
                   </>
@@ -434,15 +553,15 @@ const NewTransfer = () => {
 
                 {needsInterac && (
                   <div>
-                    <Label className="text-[#A1A1AA] text-sm">Email Interac du receveur *</Label>
+                    <Label className="text-[#A1A1AA] text-sm">{t.interacEmail}</Label>
                     <Input placeholder="email@exemple.ca" type="email" value={form.receiver_interac_email} onChange={set('receiver_interac_email')}
                       className="mt-1.5 bg-[#1A1A1A] border-white/10 focus:border-[#D4AF37] text-white" />
                   </div>
                 )}
 
                 <div>
-                  <Label className="text-[#A1A1AA] text-sm">Notes (optionnel)</Label>
-                  <Textarea placeholder="Message pour notre équipe ou précisions…" value={form.notes} onChange={set('notes')}
+                  <Label className="text-[#A1A1AA] text-sm">{t.notes}</Label>
+                  <Textarea placeholder={t.notesPlaceholder} value={form.notes} onChange={set('notes')}
                     className="mt-1.5 bg-[#1A1A1A] border-white/10 focus:border-[#D4AF37] text-white resize-none" rows={3} data-testid="notes" />
                 </div>
               </CardContent>
@@ -450,46 +569,46 @@ const NewTransfer = () => {
 
             <div className="flex gap-3">
               <Button type="button" variant="outline" onClick={() => setStep(1)} className="border-white/10 text-white hover:bg-white/5" data-testid="step-2-back">
-                <ArrowLeft className="w-4 h-4 mr-2" /> Retour
+                <ArrowLeft className="w-4 h-4 mr-2" /> {t.back}
               </Button>
               <Button onClick={() => setStep(3)} disabled={!okStep2} className="flex-1 bg-[#D4AF37] text-black hover:bg-[#B59326] font-semibold" data-testid="step-2-next">
-                Vérifier le récapitulatif <ArrowRight className="w-5 h-5 ml-2" />
+                {t.nextSummary} <ArrowRight className="w-5 h-5 ml-2" />
               </Button>
             </div>
           </div>
         )}
 
-        {/* ─────────────── STEP 3 : Récapitulatif ─────────────── */}
+        {/* ─────────────── STEP 3 ─────────────── */}
         {step === 3 && (
           <div className="space-y-5 animate-fade-in">
             <Card className="bg-[#0F0F0F] border-white/10">
               <CardHeader className="pb-2">
-                <CardTitle className="text-white text-base">Récapitulatif du transfert</CardTitle>
+                <CardTitle className="text-white text-base">{t.summaryTitle}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 <Row label="Corridor"          value={selectedCorridor?.label} />
-                <Row label="Méthode de paiement" value={selectedCorridor?.payment_methods?.find((p) => p.key === form.payment_method)?.label} />
-                <Row label="Mode de réception" value={DELIVERY_ASSETS[form.delivery_method]?.label} />
+                <Row label={t.paymentMethod} value={selectedCorridor?.payment_methods?.find((p) => p.key === form.payment_method)?.label} />
+                <Row label={t.deliveryMethod} value={DELIVERY_ASSETS[form.delivery_method]?.label} />
               </CardContent>
             </Card>
 
             {calculation && (
               <Card className="bg-[#0A0A0A] border-[#D4AF37]/20">
                 <CardContent className="p-5 space-y-3">
-                  <Row label="Vous envoyez"       value={fmt(form.send_amount, calculation.send_currency)} />
-                  <Row label="Frais"              value={fmt(calculation.fee, calculation.send_currency)} />
+                  <Row label={t.sentAmount}       value={fmt(form.send_amount, calculation.send_currency)} />
+                  <Row label={t.fees}              value={fmt(calculation.fee, calculation.send_currency)} />
                   <div className="h-px bg-white/10" />
-                  <Row label="Total à payer"      value={fmt(calculation.total_charged, calculation.send_currency)} bold />
+                  <Row label={t.totalPay}      value={fmt(calculation.total_charged, calculation.send_currency)} bold />
                   <div className="h-px bg-white/10" />
-                  <Row label="Le receveur reçoit" value={fmt(calculation.receive_amount, calculation.receive_currency)} gold />
+                  <Row label={t.receiverGets} value={fmt(calculation.receive_amount, calculation.receive_currency)} gold />
                 </CardContent>
               </Card>
             )}
 
             <Card className="bg-[#0F0F0F] border-white/10">
               <CardContent className="p-5 space-y-3">
-                <p className="text-[#A1A1AA] text-xs uppercase tracking-wider mb-2">Receveur</p>
-                <Row label="Nom" value={form.receiver_name} />
+                <p className="text-[#A1A1AA] text-xs uppercase tracking-wider mb-2">{t.receiverText}</p>
+                <Row label="Nom / Name" value={form.receiver_name} />
                 {form.receiver_phone         && <Row label="Téléphone"    value={form.receiver_phone} />}
                 {form.receiver_bank_name     && <Row label="Banque"       value={form.receiver_bank_name} />}
                 {form.receiver_bank_account  && <Row label="N° compte"    value={form.receiver_bank_account} />}
@@ -500,48 +619,42 @@ const NewTransfer = () => {
 
             <div className="glass-card rounded-xl p-4 border-[#D4AF37]/20 flex items-start gap-3">
               <Info className="w-4 h-4 text-[#D4AF37] shrink-0 mt-0.5" />
-              <p className="text-[#A1A1AA] text-sm leading-relaxed">
-                Après confirmation, vous recevrez les instructions de paiement détaillées et un numéro de suivi unique.
-                Aucun argent ne sera débité automatiquement.
-              </p>
+              <p className="text-[#A1A1AA] text-sm leading-relaxed">{t.disclaimer}</p>
             </div>
 
             <div className="flex gap-3">
               <Button type="button" variant="outline" onClick={() => setStep(2)} className="border-white/10 text-white hover:bg-white/5" data-testid="step-3-back">
-                <ArrowLeft className="w-4 h-4 mr-2" /> Retour
+                <ArrowLeft className="w-4 h-4 mr-2" /> {t.back}
               </Button>
               <Button onClick={handleSubmit} disabled={loading} className="flex-1 bg-[#D4AF37] text-black hover:bg-[#B59326] font-semibold py-6" data-testid="submit-transfer">
                 {loading ? (
-                  <><Loader2 className="w-5 h-5 mr-2 animate-spin" />Création en cours…</>
+                  <><Loader2 className="w-5 h-5 mr-2 animate-spin" />{t.creating}</>
                 ) : (
-                  <><Check className="w-5 h-5 mr-2" />Confirmer le transfert</>
+                  <><Check className="w-5 h-5 mr-2" />{t.confirmTransfer}</>
                 )}
               </Button>
             </div>
           </div>
         )}
 
-        {/* ─────────────── STEP 4 : Instructions de paiement + upload ─────────────── */}
+        {/* ─────────────── STEP 4 ─────────────── */}
         {step === 4 && created && (
           <div className="space-y-6 animate-fade-in">
-
-            {/* Succès + tracking */}
             <div className="glass-card rounded-2xl p-6 border-[#D4AF37]/30 text-center space-y-3">
               <div className="w-14 h-14 rounded-full bg-[#D4AF37]/10 border border-[#D4AF37]/30 flex items-center justify-center mx-auto">
                 <CheckCircle2 className="w-7 h-7 text-[#D4AF37]" />
               </div>
-              <h2 className="text-white text-xl font-bold">Transfert créé avec succès !</h2>
-              <p className="text-[#A1A1AA] text-sm">Votre numéro de suivi :</p>
+              <h2 className="text-white text-xl font-bold">{t.successTitle}</h2>
+              <p className="text-[#A1A1AA] text-sm">{t.trackingLabel}</p>
               <div className="flex items-center justify-center gap-2">
                 <code className="text-[#D4AF37] font-mono text-lg font-bold tracking-wider bg-[#D4AF37]/10 px-4 py-2 rounded-lg">
                   {created.tracking_number}
                 </code>
                 <CopyBtn text={created.tracking_number} />
               </div>
-              <p className="text-[#555] text-xs">Conservez ce numéro pour suivre votre transfert</p>
+              <p className="text-[#555] text-xs">{t.trackingNote}</p>
             </div>
 
-            {/* Instructions de paiement */}
             {created.payment_instructions && (
               <Card className="bg-[#0F0F0F] border-[#D4AF37]/20">
                 <CardHeader className="pb-3">
@@ -552,16 +665,15 @@ const NewTransfer = () => {
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <ol className="space-y-3">
-                    {created.payment_instructions.steps.map((step, i) => (
+                    {created.payment_instructions.steps.map((stepStr, i) => (
                       <li key={i} className="flex gap-3">
                         <span className="w-6 h-6 rounded-full bg-[#D4AF37]/20 text-[#D4AF37] text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">
                           {i + 1}
                         </span>
                         <div className="flex-1 flex items-start gap-1">
-                          <span className="text-[#A1A1AA] text-sm leading-relaxed flex-1">{step}</span>
-                          {/* bouton copier sur les lignes contenant des valeurs clés */}
-                          {(step.includes('PMT-') || step.includes('@') || step.includes('0x') || step.includes('BJ66')) && (
-                            <CopyBtn text={step.split(':').pop()?.trim() || step} />
+                          <span className="text-[#A1A1AA] text-sm leading-relaxed flex-1">{stepStr}</span>
+                          {(stepStr.includes('PMT-') || stepStr.includes('@') || stepStr.includes('0x') || stepStr.includes('BJ66')) && (
+                            <CopyBtn text={stepStr.split(':').pop()?.trim() || stepStr} />
                           )}
                         </div>
                       </li>
@@ -577,12 +689,11 @@ const NewTransfer = () => {
               </Card>
             )}
 
-            {/* Upload preuve */}
             <Card className="bg-[#0F0F0F] border-white/10">
               <CardHeader className="pb-3">
                 <CardTitle className="text-white text-base flex items-center gap-2">
                   <Upload className="w-5 h-5 text-[#D4AF37]" />
-                  Téléverser votre preuve de paiement
+                  {t.uploadTitle}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -590,19 +701,19 @@ const NewTransfer = () => {
                   <div className="flex items-center gap-3 p-4 rounded-xl bg-green-500/10 border border-green-500/30">
                     <CheckCircle2 className="w-6 h-6 text-green-400 shrink-0" />
                     <div>
-                      <p className="text-green-400 font-semibold text-sm">Preuve envoyée avec succès !</p>
-                      <p className="text-[#A1A1AA] text-xs mt-0.5">Notre équipe va valider votre paiement et traiter votre transfert.</p>
+                      <p className="text-green-400 font-semibold text-sm">{t.uploadSuccess}</p>
+                      <p className="text-[#A1A1AA] text-xs mt-0.5">{t.uploadSuccessSub}</p>
                     </div>
                   </div>
                 ) : (
                   <>
-                    <p className="text-[#A1A1AA] text-sm">
-                      Une fois le paiement effectué, uploadez votre capture d&apos;écran ou reçu (JPG, PNG, PDF — max 5 Mo).
-                    </p>
+                    <p className="text-[#A1A1AA] text-sm">{t.uploadInstructions}</p>
 
-                    {/* Drop zone */}
                     <div
-                      onClick={() => fileRef.current?.click()}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        fileRef.current?.click();
+                      }}
                       className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${
                         proofFile ? 'border-[#D4AF37]/50 bg-[#D4AF37]/5' : 'border-white/10 hover:border-[#D4AF37]/30 hover:bg-white/5'
                       }`}
@@ -618,12 +729,12 @@ const NewTransfer = () => {
                         <div className="space-y-1">
                           <Smartphone className="w-8 h-8 text-[#D4AF37] mx-auto" />
                           <p className="text-white text-sm font-medium">{proofFile.name}</p>
-                          <p className="text-[#A1A1AA] text-xs">{(proofFile.size / 1024).toFixed(0)} Ko — cliquez pour changer</p>
+                          <p className="text-[#A1A1AA] text-xs">{(proofFile.size / 1024).toFixed(0)} Ko — {t.clickToChange}</p>
                         </div>
                       ) : (
                         <div className="space-y-2">
                           <Upload className="w-8 h-8 text-[#555] mx-auto" />
-                          <p className="text-[#A1A1AA] text-sm">Cliquez pour sélectionner votre fichier</p>
+                          <p className="text-[#A1A1AA] text-sm">{t.clickToSelect}</p>
                           <p className="text-[#555] text-xs">JPG, PNG, WebP, PDF · Max 5 Mo</p>
                         </div>
                       )}
@@ -634,33 +745,16 @@ const NewTransfer = () => {
                       disabled={!proofFile || proofUploading}
                       className="w-full bg-[#D4AF37] text-black hover:bg-[#B59326] font-semibold"
                     >
-                      {proofUploading
-                        ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Envoi en cours…</>
-                        : <><Upload className="w-4 h-4 mr-2" />Envoyer la preuve de paiement</>}
+                      {proofUploading ? (
+                        <><Loader2 className="w-4 h-4 mr-2 animate-spin" />{t.sending}</>
+                      ) : (
+                        <><Upload className="w-4 h-4 mr-2" />{t.sendProof}</>
+                      )}
                     </Button>
                   </>
                 )}
               </CardContent>
             </Card>
-
-            {/* Actions */}
-            <div className="flex gap-3">
-              <Button
-                variant="outline"
-                onClick={() => navigate(`/transfers/${created.id}`)}
-                className="flex-1 border-white/10 text-white hover:bg-white/5"
-              >
-                <ExternalLink className="w-4 h-4 mr-2" />
-                Voir le détail du transfert
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => navigate('/dashboard')}
-                className="flex-1 border-white/10 text-white hover:bg-white/5"
-              >
-                Retour au tableau de bord
-              </Button>
-            </div>
           </div>
         )}
       </main>
