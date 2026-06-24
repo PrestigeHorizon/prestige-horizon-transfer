@@ -61,7 +61,7 @@ logger     = logging.getLogger(__name__)
 # ============================================================
 
 RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
-FROM_EMAIL     = os.environ.get("FROM_EMAIL", "Prestige Money Transfer <onboarding@resend.dev>")
+FROM_EMAIL     = os.environ.get("FROM_EMAIL", "Prestige Money Transfer <prestigehorizonbj@gmail.com>")
 RESEND_API_URL = "https://api.resend.com/emails"
 APP_URL        = os.environ.get("APP_URL", "http://localhost:3000")
 
@@ -291,7 +291,7 @@ PAYMENT_INSTRUCTIONS = {
         "steps": [
             "Connectez-vous à votre banque en ligne (Desjardins, RBC, TD, BMO, Scotia, etc.)",
             "Initiez un virement Interac e-Transfer",
-            "Destinataire : paiement@prestigemoneytransfer.ca",
+            "Destinataire : prestigehorizonbj@gmail.com",
             "Montant : {total_charged} CAD",
             "Message/Note : {tracking_number}",
             "Envoyez et téléchargez votre preuve de virement ci-dessous."
