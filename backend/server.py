@@ -1,5 +1,7 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, status, UploadFile, File, FastMail
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+# 1. Les éléments propres à FastAPI
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, status, UploadFile, File
+# 2. Les éléments propres à fastapi-mail
+from fastapi_mail import FastMail, ConnectionConfig, MessageSchema
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
