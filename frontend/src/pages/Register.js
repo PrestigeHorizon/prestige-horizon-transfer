@@ -11,8 +11,8 @@ import logoImg from '../images/white_logo_Prestige_horizon_bg.png';
 
 /* Seuls Canada et Bénin sont acceptés par le backend */
 const COUNTRIES = [
-  { value: 'Canada', label: '🇨🇦 Canada', hint: 'Interac / USDC' },
-  { value: 'Bénin', label: '🇧🇯 Bénin', hint: 'MTN MoMo · Moov · Virement' },
+  { value: 'Canada', label: '🇨🇦 Canada', hint: 'Interac ↔ USDC' },
+  { value: 'Bénin', label: '🇧🇯 Bénin', hint: 'MTN MoMo ↔ Moov Money ↔ Virement Bancaire' },
 ];
 
 const translations = {
