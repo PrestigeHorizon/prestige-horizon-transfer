@@ -19,7 +19,7 @@ const translations = {
   fr: {
     backHome: "Retour à l'accueil",
     welcome: 'Bienvenue',
-    corridorDesc: 'Le service de transfert dédié au corridor',
+    corridorDesc: 'Service de transfert dédié au corridor',
     features: [
       { key: 1, text: 'Transferts Canada ↔ Bénin en 24–48h' },
       { key: 2, text: 'Service enregistré auprès du CANAFE' },
@@ -158,7 +158,10 @@ const Register = () => {
           <div className="space-y-2">
             <h2 className="text-2xl font-bold text-[#D4AF37]">{t.welcome}</h2>
             <p className="text-[#A1A1AA] max-w-xs mx-auto text-sm leading-relaxed">
-              {t.corridorDesc} <strong className="text-white">Canada ↔ Bénin</strong>
+              {t.corridorDesc}
+            </p>
+            <p className="text-[#A1A1AA] max-w-xs mx-auto text-sm leading-relaxed">
+              <strong className="text-white">Canada ↔ Bénin</strong>
             </p>
           </div>
           <ul className="space-y-4 text-left max-w-xs mx-auto">
