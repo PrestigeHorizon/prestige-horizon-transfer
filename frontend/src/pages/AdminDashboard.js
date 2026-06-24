@@ -464,7 +464,7 @@ const AdminDashboard = () => {
                           <p className="text-white text-sm font-medium">
                             {tItem.corridor === 'canada_to_benin' ? '🇨🇦→🇧🇯' : '🇧🇯→🇨🇦'}
                           </p>
-                          <p className="text-[#555] text-xs font-mono mt-0.5">{tItem.tracking_number}</p>
+                          <p className="text-white text-xs font-mono mt-0.5">{tItem.tracking_number}</p>
                           <p className="text-[#A1A1AA] text-xs mt-0.5">{fmtDate(tItem.created_at, lang)}</p>
                         </div>
                         <div>
@@ -483,7 +483,7 @@ const AdminDashboard = () => {
                           <p className="text-[#A1A1AA] text-xs">{t.amounts}</p>
                           <p className="text-white text-sm font-semibold">{fmt(tItem.send_amount, tItem.send_currency, lang)}</p>
                           <p className="text-[#D4AF37] text-xs">→ {fmt(tItem.receive_amount, tItem.receive_currency, lang)}</p>
-                          <p className="text-[#555] text-xs">
+                          <p className="text-white text-xs">
                             {getMethodLabel(tItem.payment_method, PAYMENT_LABELS)} · {getMethodLabel(tItem.delivery_method, DELIVERY_LABELS)}
                           </p>
                         </div>

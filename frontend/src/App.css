@@ -24,11 +24,19 @@
 }
 
 @media screen and (max-width: 768px) {
+
     .dashboard,
     .adminDashboard {
-        background-image: url('./images/amazone2.jpg');
+        background-image:
+            linear-gradient(rgba(0, 0, 0, 0.5),
+                rgba(0, 0, 0, 0.5)),
+            url('./images/amazone2.jpg');
+
+        background-size: cover;
         background-position: top center;
-        opacity: 0.50;
+        background-repeat: no-repeat;
+
+        color: #ffffff;
     }
 }
 
@@ -207,7 +215,7 @@
         min-height: 80vh;
         padding-top: 80px;
     }
-    
+
     .amount-display {
         font-size: 1.5rem;
     }
