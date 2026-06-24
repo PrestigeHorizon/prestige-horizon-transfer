@@ -31,7 +31,7 @@ origins = [
     "https://prestige-horizon-transfer.onrender.com", # URL Frontend
 ]
 
-# 2. Ajoutez le middleware à l'application
+# 2. Ajout du middleware à l'application
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,          # Autorise les domaines de la liste
@@ -61,7 +61,7 @@ logger     = logging.getLogger(__name__)
 # ============================================================
 
 RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
-FROM_EMAIL     = os.environ.get("FROM_EMAIL", "Prestige Money Transfer <noreply@prestigemoneytransfer.ca>")
+FROM_EMAIL     = os.environ.get("FROM_EMAIL", "Prestige Money Transfer <onboarding@resend.dev>")
 RESEND_API_URL = "https://api.resend.com/emails"
 APP_URL        = os.environ.get("APP_URL", "http://localhost:3000")
 
