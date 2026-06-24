@@ -14,9 +14,22 @@
     background: linear-gradient(to bottom, rgba(5, 5, 5, 0.9), rgba(5, 5, 5, 1));
 }
 
-.dashboard, .adminDashboard {
+.dashboard,
+.adminDashboard {
     background-image: url('./images/background.png');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
     opacity: 0.80;
+}
+
+@media screen and (max-width: 768px) {
+    .dashboard,
+    .adminDashboard {
+        background-image: url('./images/amazone2.jpg');
+        background-position: top center;
+        opacity: 0.50;
+    }
 }
 
 .hero-section::before {
