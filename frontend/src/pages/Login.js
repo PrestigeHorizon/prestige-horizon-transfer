@@ -97,7 +97,7 @@ const Login = ({ onLangChange }) => {
           
           <Link
             to="/"
-            className="flex items-center gap-2 text-[#A1A1AA] hover:text-white transition-colors mb-8 w-fit text-sm"
+            className="flex items-center gap-2 text-white hover:text-yellow-500 transition-colors mb-8 w-fit text-lg"
             data-testid="back-to-home"
           >
             <ArrowLeft className="w-4 h-4" />
@@ -105,7 +105,7 @@ const Login = ({ onLangChange }) => {
           </Link>
 
           <div className="mb-8">
-            <img src={LOGO_URL} alt="Prestige Horizon" className="w-40 md:w-48 h-auto object-contain" />
+            <img src={LOGO_URL} alt="Prestige Horizon" className="w-50 md:w-58 h-auto object-contain" />
             <h1 className="text-2xl sm:text-3xl font-bold text-yellow-500 mb-2 mt-4">{t.welcome}</h1>
             <p className="text-white/70 text-sm sm:text-base">{t.subtitle}</p>
           </div>
@@ -162,9 +162,9 @@ const Login = ({ onLangChange }) => {
             </Button>
           </form>
 
-          <p className="mt-6 text-center text-[#A1A1AA] text-sm">
+          <p className="mt-6 text-center text-white/60 text-lg">
             {t.noAccount}{' '}
-            <Link to="/register" className="text-[#D4AF37] hover:underline" data-testid="login-register-link">
+            <Link to="/register" className="text-[#D4AF37] hover:underline hover:text-yellow-500" data-testid="login-register-link">
               {t.createAccount}
             </Link>
           </p>
