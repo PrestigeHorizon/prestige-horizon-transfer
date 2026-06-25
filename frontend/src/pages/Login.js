@@ -81,7 +81,7 @@ const Login = ({ onLangChange }) => {
 
   return (
     <div className="min-h-screen bg-[#050505] flex relative" data-testid="login-page">
-      
+
       {/* Sélecteur de langue discret en haut à droite du formulaire */}
       <div className="absolute top-6 left-6 lg:left-auto lg:right-[52%] z-20">
         <button
@@ -182,7 +182,7 @@ const Login = ({ onLangChange }) => {
           backgroundRepeat: 'no-repeat',
         }}
       >
-        <div className="absolute inset-0 bg-black/65"></div>
+        <div className="absolute inset-0 bg-black/30"></div>
         <div className="absolute inset-0 bg-gradient-to-br from-[#D4AF37]/10 to-transparent"></div>
 
         <div className="relative z-10 text-center p-12">
