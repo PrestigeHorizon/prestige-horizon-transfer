@@ -11,7 +11,6 @@ import {
   Building2,
   Send,
   RefreshCw,
-  Globe
 } from "lucide-react";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
@@ -53,9 +52,9 @@ const translations = {
     steps: ["Créer un compte", "Initier un transfert", "Effectuer le paiement", "Réception des fonds"],
     testimonialsTitle: "Ce que disent nos clients",
     testimonials: [
-      { name: "Abdou - Montréal", text: "Service rapide et fiable. Ma famille reçoit l'argent sans problème." },
-      { name: "Clarisse - Longueuil", text: "Les frais sont transparents et le support répond rapidement." },
-      { name: "Patrick - Québec", text: "Je recommande Prestige Money Transfer à toute la diaspora béninoise." }
+      { name: "Abdoul-Wassiou - Gatineau", text: "Service rapide et fiable. Ma famille reçoit l'argent sans problème." },
+      { name: "Aicha - Longueuil", text: "Les frais sont transparents et le support répond rapidement." },
+      { name: "Genevieve - Québec", text: "Je recommande Prestige Money Transfer à toute la diaspora béninoise." }
     ],
     complianceTitle: "Conforme et Sécurisé",
     complianceDesc: "Prestige Money Transfer est enregistré auprès du CANAFE et applique les meilleures pratiques de conformité et de lutte contre le blanchiment d'argent.",
@@ -96,9 +95,9 @@ const translations = {
     steps: ["Create an account", "Initiate a transfer", "Make the payment", "Receive funds"],
     testimonialsTitle: "What our clients say",
     testimonials: [
-      { name: "Abdou - Montreal", text: "Fast and reliable service. My family receives the money with no issues." },
-      { name: "Clarisse - Longueuil", text: "Fees are transparent and support team responds quickly." },
-      { name: "Patrick - Quebec", text: "I recommend Prestige Money Transfer to the entire Beninese diaspora." }
+      { name: "Abdoul-Wassiou - Gatineau", text: "Fast and reliable service. My family receives the money with no issues." },
+      { name: "Aicha - Longueuil", text: "Fees are transparent and support team responds quickly." },
+      { name: "Genevieve - Quebec", text: "I recommend Prestige Money Transfer to the entire Beninese diaspora." }
     ],
     complianceTitle: "Compliant and Secure",
     complianceDesc: "Prestige Money Transfer is registered with FINTRAC and applies the best practices for compliance and anti-money laundering.",

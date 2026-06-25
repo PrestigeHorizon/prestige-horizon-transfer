@@ -3,7 +3,7 @@ import axios from 'axios';
 import { useAuth } from '@/context/AuthContext';
 import { Navbar } from '@/components/Navbar';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+/*import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';*/
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -107,40 +107,40 @@ const TRANSLATIONS = {
 };
 
 const STATUS_META = {
-  pending:          { label: { fr: 'En attente', en: 'Pending' },         color: 'text-amber-400',  bg: 'bg-amber-400/10',  Icon: Clock },
-  payment_received: { label: { fr: 'Paiement reçu', en: 'Payment received' }, color: 'text-blue-400',   bg: 'bg-blue-400/10',   Icon: Wallet },
-  processing:       { label: { fr: 'En traitement', en: 'Processing' },      color: 'text-purple-400', bg: 'bg-purple-400/10', Icon: Loader2 },
-  completed:        { label: { fr: 'Complété', en: 'Completed' },          color: 'text-green-400',  bg: 'bg-green-400/10',  Icon: CheckCircle },
-  cancelled:        { label: { fr: 'Annulé', en: 'Cancelled' },            color: 'text-zinc-400',   bg: 'bg-zinc-400/10',   Icon: AlertCircle },
-  failed:           { label: { fr: 'Échoué', en: 'Failed' },             color: 'text-red-400',    bg: 'bg-red-400/10',    Icon: AlertCircle },
+  pending: { label: { fr: 'En attente', en: 'Pending' }, color: 'text-amber-400', bg: 'bg-amber-400/10', Icon: Clock },
+  payment_received: { label: { fr: 'Paiement reçu', en: 'Payment received' }, color: 'text-blue-400', bg: 'bg-blue-400/10', Icon: Wallet },
+  processing: { label: { fr: 'En traitement', en: 'Processing' }, color: 'text-purple-400', bg: 'bg-purple-400/10', Icon: Loader2 },
+  completed: { label: { fr: 'Complété', en: 'Completed' }, color: 'text-green-400', bg: 'bg-green-400/10', Icon: CheckCircle },
+  cancelled: { label: { fr: 'Annulé', en: 'Cancelled' }, color: 'text-zinc-400', bg: 'bg-zinc-400/10', Icon: AlertCircle },
+  failed: { label: { fr: 'Échoué', en: 'Failed' }, color: 'text-red-400', bg: 'bg-red-400/10', Icon: AlertCircle },
 };
 
 const NEXT_STATUSES = {
-  pending:          ['payment_received', 'cancelled'],
+  pending: ['payment_received', 'cancelled'],
   payment_received: ['processing', 'cancelled', 'failed'],
-  processing:       ['completed', 'failed'],
-  completed:        [],
-  cancelled:        [],
-  failed:           ['pending'],
+  processing: ['completed', 'failed'],
+  completed: [],
+  cancelled: [],
+  failed: ['pending'],
 };
 
 const DELIVERY_LABELS = {
-  mtn:           'MTN MoMo',
-  moov:          'Moov Money',
+  mtn: 'MTN MoMo',
+  moov: 'Moov Money',
   bank_transfer: { fr: 'Virement bancaire', en: 'Bank Transfer' },
-  interac:       'Interac',
+  interac: 'Interac',
 };
 
 const PAYMENT_LABELS = {
-  interac:       'Interac',
-  crypto_usdc:   'USDC',
+  interac: 'Interac',
+  crypto_usdc: 'USDC',
   bank_transfer: { fr: 'Virement', en: 'Wire Transfer' },
 };
 
 // Formatage adaptatif selon la langue sélectionnée
 const fmtCAD = (n, lang) => new Intl.NumberFormat(lang === 'fr' ? 'fr-CA' : 'en-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 }).format(n);
 const fmtXOF = (n, lang) => new Intl.NumberFormat(lang === 'fr' ? 'fr-FR' : 'en-US', { style: 'currency', currency: 'XOF', minimumFractionDigits: 0 }).format(n);
-const fmt    = (n, cur, lang) => cur === 'CAD' ? fmtCAD(n, lang) : fmtXOF(n, lang);
+const fmt = (n, cur, lang) => cur === 'CAD' ? fmtCAD(n, lang) : fmtXOF(n, lang);
 const fmtDate = (d, lang) => new Date(d).toLocaleDateString(lang === 'fr' ? 'fr-CA' : 'en-CA', {
   day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit',
 });
@@ -166,20 +166,20 @@ const AdminDashboard = () => {
     return navigator.language?.startsWith('en') ? 'en' : 'fr';
   });
 
-  const [transfers,         setTransfers]         = useState([]);
+  const [transfers, setTransfers] = useState([]);
   const [filteredTransfers, setFilteredTransfers] = useState([]);
-  const [stats,             setStats]             = useState(null);
-  const [loading,           setLoading]           = useState(true);
-  const [refreshing,        setRefreshing]        = useState(false);
-  const [statusFilter,      setStatusFilter]      = useState('all');
-  const [corridorFilter,    setCorridorFilter]    = useState('all');
-  const [searchQuery,       setSearchQuery]       = useState('');
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [corridorFilter, setCorridorFilter] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
 
   const [editingTransfer, setEditingTransfer] = useState(null);
-  const [updateLoading,   setUpdateLoading]   = useState(false);
-  const [updateData,      setUpdateData]      = useState({ status: '', admin_notes: '', exchange_rate_applied: '' });
+  const [updateLoading, setUpdateLoading] = useState(false);
+  const [updateData, setUpdateData] = useState({ status: '', admin_notes: '', exchange_rate_applied: '' });
 
-  const [proofModal,   setProofModal]   = useState(null);
+  const [proofModal, setProofModal] = useState(null);
   const [proofLoading, setProofLoading] = useState(false);
 
   // Raccourci pour récupérer les chaînes de texte traduites
@@ -203,7 +203,7 @@ const AdminDashboard = () => {
     try {
       const [tRes, sRes] = await Promise.all([
         axios.get(`${API_URL}/api/admin/transfers`, { headers: authHeader() }),
-        axios.get(`${API_URL}/api/admin/stats`,     { headers: authHeader() }),
+        axios.get(`${API_URL}/api/admin/stats`, { headers: authHeader() }),
       ]);
       setTransfers(tRes.data);
       setStats(sRes.data);
@@ -228,13 +228,13 @@ const AdminDashboard = () => {
   /* Filtrage */
   useEffect(() => {
     let f = [...transfers];
-    if (statusFilter  !== 'all') f = f.filter((trans) => trans.status   === statusFilter);
+    if (statusFilter !== 'all') f = f.filter((trans) => trans.status === statusFilter);
     if (corridorFilter !== 'all') f = f.filter((trans) => trans.corridor === corridorFilter);
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       f = f.filter((trans) =>
         trans.receiver_name?.toLowerCase().includes(q) ||
-        trans.sender_name?.toLowerCase().includes(q)   ||
+        trans.sender_name?.toLowerCase().includes(q) ||
         trans.tracking_number?.toLowerCase().includes(q) ||
         trans.receiver_phone?.includes(q)
       );
@@ -311,15 +311,16 @@ const AdminDashboard = () => {
   }
 
   return (
-    <div className="adminDashboard min-h-screen bg-[#050505]" data-testid="admin-dashboard">
+    <div className="adminDashboard min-h-screen bg-black relative overflow-hidden">
+      <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/10 via-transparent to-yellow-500/5 pointer-events-none" />
       <Navbar lang={lang} setLang={setLang} />
 
-      <main className="pt-24 pb-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+      <main className="relative z-10 pt-24 pb-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
 
         {/* ── Header ── */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-white">{t.dashboardTitle}</h1>
+            <h1 className="text-4xl font-bold">{t.dashboardTitle}</h1>
             <p className="text-white mt-1">{t.dashboardSubtitle}</p>
           </div>
           <div className="flex items-center gap-2">
@@ -332,11 +333,11 @@ const AdminDashboard = () => {
               <Languages className="w-4 h-4 text-[#D4AF37]" />
               {lang.toUpperCase()}
             </button>
-            
+
             <button
               onClick={() => fetchData(true)}
               disabled={refreshing}
-              className="p-2 rounded-lg border border-white/10 text-[#A1A1AA] hover:text-white hover:border-white/20 transition-all bg-[#1A1A1A]"
+              className="p-2 rounded-lg border border-white/10 text-white hover:text-white hover:border-white/20 transition-all bg-[#1A1A1A]"
               title={t.refresh}
             >
               <RefreshCw className={`w-5 h-5 ${refreshing ? 'animate-spin text-[#D4AF37]' : ''}`} />
@@ -348,12 +349,25 @@ const AdminDashboard = () => {
         {stats && (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
             {[
-              { label: t.statsTotal, value: stats.total_transfers,           Icon: TrendingUp,  color: 'text-[#D4AF37]', bg: 'bg-[#D4AF37]/10' },
-              { label: t.statsPending,       value: stats.by_status?.pending || 0,   Icon: Clock,       color: 'text-amber-400', bg: 'bg-amber-400/10' },
-              { label: t.statsUsers,     value: stats.total_users,               Icon: Users,       color: 'text-blue-400',  bg: 'bg-blue-400/10'  },
-              { label: t.statsCompleted,        value: stats.by_status?.completed || 0, Icon: CheckCircle, color: 'text-green-400', bg: 'bg-green-400/10' },
+              { label: t.statsTotal, value: stats.total_transfers, Icon: TrendingUp, color: 'text-[#D4AF37]', bg: 'bg-[#D4AF37]/10' },
+              { label: t.statsPending, value: stats.by_status?.pending || 0, Icon: Clock, color: 'text-amber-400', bg: 'bg-amber-400/10' },
+              { label: t.statsUsers, value: stats.total_users, Icon: Users, color: 'text-blue-400', bg: 'bg-blue-400/10' },
+              { label: t.statsCompleted, value: stats.by_status?.completed || 0, Icon: CheckCircle, color: 'text-green-400', bg: 'bg-green-400/10' },
             ].map(({ label, value, Icon, color, bg }) => (
-              <div key={label} className="glass-card rounded-2xl p-6">
+              <div
+                key={label}
+                className="
+    bg-zinc-900/90
+    backdrop-blur-sm
+    border border-yellow-500/20
+    rounded-2xl
+    p-6
+    shadow-lg
+    shadow-yellow-500/10
+    hover:border-yellow-500/40
+    transition-all
+  "
+              >
                 <div className={`w-9 h-9 rounded-xl ${bg} flex items-center justify-center mb-3`}>
                   <Icon className={`w-4 h-4 ${color}`} />
                 </div>
@@ -420,7 +434,7 @@ const AdminDashboard = () => {
                 <SelectValue placeholder="Corridor" />
               </SelectTrigger>
               <SelectContent className="bg-[#1A1A1A] border-white/10">
-                <SelectItem value="all"             className="text-white">{t.allCorridors}</SelectItem>
+                <SelectItem value="all" className="text-white">{t.allCorridors}</SelectItem>
                 <SelectItem value="canada_to_benin" className="text-white">🇨🇦 → 🇧🇯 Canada → Bénin</SelectItem>
                 <SelectItem value="benin_to_canada" className="text-white">🇧🇯 → 🇨🇦 Bénin → Canada</SelectItem>
               </SelectContent>

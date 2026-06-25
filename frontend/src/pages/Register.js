@@ -153,7 +153,7 @@ const Register = () => {
         <div className="relative z-10 text-center p-12 space-y-10">
           <div className="relative">
             <div className="absolute inset-0 bg-[#D4AF37]/10 blur-3xl rounded-full" />
-            <img src={logoImg} alt="Prestige Horizon" className="relative z-10 w-52 mx-auto object-contain" data-testid="hero-logo" />
+            <img src={logoImg} alt="Prestige Horizon" className="relative z-10 w-62 mx-auto object-contain" data-testid="hero-logo" />
           </div>
           <div className="space-y-2">
             <h2 className="text-2xl font-bold text-[#D4AF37]">{t.welcome}</h2>

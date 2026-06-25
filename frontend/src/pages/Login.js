@@ -186,10 +186,10 @@ const Login = ({ onLangChange }) => {
         <div className="absolute inset-0 bg-gradient-to-br from-[#D4AF37]/10 to-transparent"></div>
 
         <div className="relative z-10 text-center p-12">
-          <h2 className="text-6xl font-bold text-[#D4AF37] mb-4 drop-shadow-[0_0_8px_rgba(212,175,55,0.35)]">
+          <h2 className="text-6xl font-bold text-yellow-500 mb-4 drop-shadow-[0_0_8px_rgba(212,175,55,0.35)]">
             {t.rightTitle}
           </h2>
-          <p className="text-2xl text-[#D4AF37]/75 max-w-sm mx-auto">
+          <p className="text-2xl text-yellow-500 max-w-sm mx-auto">
             {t.rightDesc}
           </p>
         </div>
