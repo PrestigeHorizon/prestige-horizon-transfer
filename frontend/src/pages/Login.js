@@ -45,9 +45,7 @@ const translations = {
   }
 };
 
-// Optionnel : On peut recevoir syncLangFromLogin pour mettre à jour l'état global immédiatement au changement
 const Login = ({ onLangChange }) => {
-  // Initialise avec le localStorage s'il existe, sinon 'fr'
   const [lang, setLang] = useState(() => localStorage.getItem('prestige_lang') || 'fr');
   const t = translations[lang] || translations.fr;
 
@@ -56,7 +54,7 @@ const Login = ({ onLangChange }) => {
 
   useEffect(() => {
     localStorage.setItem('prestige_lang', lang);
-    if (onLangChange) onLangChange(lang); // Alerte le parent du changement
+    if (onLangChange) onLangChange(lang);
   }, [lang, onLangChange]);
 
   const [loading, setLoading] = useState(false);
@@ -80,10 +78,10 @@ const Login = ({ onLangChange }) => {
   };
 
   return (
-    <div className="min-h-screen bg-[#050505] flex relative" data-testid="login-page">
+    <div className="min-h-screen bg-[#050505] flex relative overflow-x-hidden" data-testid="login-page">
 
-      {/* Sélecteur de langue discret en haut à droite du formulaire */}
-      <div className="absolute top-6 left-6 lg:left-auto lg:right-[52%] z-20">
+      {/* Sélecteur de langue - Repositionné proprement en haut à droite de la zone active */}
+      <div className="absolute top-6 right-6 z-20 lg:right-auto lg:left-[calc(50%-5rem)]">
         <button
           onClick={() => setLang(lang === 'fr' ? 'en' : 'fr')}
           className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[#A1A1AA] hover:text-[#D4AF37] border border-white/10 hover:border-[#D4AF37]/30 px-3 py-1.5 rounded-full bg-[#111]/80 backdrop-blur transition-all"
@@ -93,25 +91,26 @@ const Login = ({ onLangChange }) => {
         </button>
       </div>
 
-      {/* Left Side - Form */}
-      <div className="w-full lg:w-1/2 flex flex-col justify-center px-8 sm:px-12 lg:px-20 py-12">
-        <Link
-          to="/"
-          className="flex items-center gap-2 text-[#A1A1AA] hover:text-white transition-colors mb-12 w-fit"
-          data-testid="back-to-home"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          {t.backHome}
-        </Link>
+      {/* Left Side - Form (Ajusté pour défiler proprement si l'écran est très petit en hauteur) */}
+      <div className="w-full lg:w-1/2 flex flex-col justify-center items-center px-4 sm:px-8 md:px-16 lg:px-20 py-12 min-h-screen">
+        <div className="max-w-md w-full mx-auto flex flex-col h-full justify-center">
+          
+          <Link
+            to="/"
+            className="flex items-center gap-2 text-[#A1A1AA] hover:text-white transition-colors mb-8 w-fit text-sm"
+            data-testid="back-to-home"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            {t.backHome}
+          </Link>
 
-        <div className="max-w-md w-full mx-auto lg:mx-0">
-          <div className="mb-10">
-            <img src={LOGO_URL} alt="Prestige Horizon" className="w-50 md:w-58 h-auto object-contain" />
-            <h1 className="text-3xl font-bold text-white mb-2 mt-4">{t.welcome}</h1>
-            <p className="text-[#A1A1AA]">{t.subtitle}</p>
+          <div className="mb-8">
+            <img src={LOGO_URL} alt="Prestige Horizon" className="w-40 md:w-48 h-auto object-contain" />
+            <h1 className="text-2xl sm:text-3xl font-bold text-yellow-500 mb-2 mt-4">{t.welcome}</h1>
+            <p className="text-white/70 text-sm sm:text-base">{t.subtitle}</p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-5">
             <div className="space-y-2">
               <Label htmlFor="email" className="text-[#A1A1AA]">{t.emailLabel}</Label>
               <div className="relative">
@@ -122,7 +121,7 @@ const Login = ({ onLangChange }) => {
                   placeholder="your@email.com"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="pl-10 bg-[#1A1A1A] border-white/10 focus:border-[#D4AF37] text-white placeholder:text-white/30"
+                  className="pl-10 bg-[#1A1A1A] border-white/10 focus:border-[#D4AF37] text-white placeholder:text-white/30 h-11"
                   required
                   data-testid="login-email"
                 />
@@ -139,7 +138,7 @@ const Login = ({ onLangChange }) => {
                   placeholder="••••••••"
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  className="pl-10 pr-10 bg-[#1A1A1A] border-white/10 focus:border-[#D4AF37] text-white placeholder:text-white/30"
+                  className="pl-10 pr-10 bg-[#1A1A1A] border-white/10 focus:border-[#D4AF37] text-white placeholder:text-white/30 h-11"
                   required
                   data-testid="login-password"
                 />
@@ -156,14 +155,14 @@ const Login = ({ onLangChange }) => {
             <Button
               type="submit"
               disabled={loading}
-              className="w-full bg-[#D4AF37] text-black hover:bg-[#B59326] font-semibold py-6"
+              className="w-full bg-[#D4AF37] text-black hover:bg-[#B59326] font-semibold py-5 mt-2"
               data-testid="login-submit"
             >
               {loading ? t.signingIn : t.signInBtn}
             </Button>
           </form>
 
-          <p className="mt-8 text-center text-[#A1A1AA]">
+          <p className="mt-6 text-center text-[#A1A1AA] text-sm">
             {t.noAccount}{' '}
             <Link to="/register" className="text-[#D4AF37] hover:underline" data-testid="login-register-link">
               {t.createAccount}
@@ -172,28 +171,29 @@ const Login = ({ onLangChange }) => {
         </div>
       </div>
 
-      {/* Right Side - Decorative */}
+      {/* Right Side - Decorative (Reste masqué sur mobile/tablette, s'affiche parfaitement sur desktop) */}
       <div
         className="hidden lg:flex w-1/2 items-center justify-center relative overflow-hidden bg-[#0A0A0A]"
         style={{
           backgroundImage: `url(${officeBg})`,
           backgroundSize: 'cover',
-          backgroundPosition: 'center',
+          backgroundPosition: 'center 20%',
           backgroundRepeat: 'no-repeat',
         }}
       >
-        <div className="absolute inset-0 bg-black/40"></div>
+        <div className="absolute inset-0 bg-black/15"></div>
         <div className="absolute inset-0 bg-gradient-to-br from-[#D4AF37]/10 to-transparent"></div>
 
-        <div className="relative z-10 text-center p-12">
-          <h2 className="text-6xl font-bold text-yellow-500 mb-4 drop-shadow-[0_0_8px_rgba(212,175,55,0.35)]">
+        <div className="relative z-10 text-center p-8 lg:p-12">
+          <h2 className="text-4xl xl:text-6xl font-bold text-yellow-500 mb-4 drop-shadow-[0_0_8px_rgba(212,175,55,0.35)]">
             {t.rightTitle}
           </h2>
-          <p className="text-2xl text-yellow-500 max-w-sm mx-auto">
+          <p className="text-lg xl:text-2xl text-white max-w-sm mx-auto low-desc">
             {t.rightDesc}
           </p>
         </div>
       </div>
+      
     </div>
   );
 };
