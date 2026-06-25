@@ -157,10 +157,10 @@ const Register = () => {
           </div>
           <div className="space-y-2">
             <h2 className="text-2xl font-bold text-[#D4AF37]">{t.welcome}</h2>
-            <p className="text-[#A1A1AA] max-w-xs mx-auto text-sm leading-relaxed">
+            <p className="text-[#A1A1AA] max-w-xs mx-auto text-lg leading-relaxed">
               {t.corridorDesc}
             </p>
-            <p className="text-[#A1A1AA] max-w-xs mx-auto text-sm leading-relaxed">
+            <p className="text-[#A1A1AA] max-w-xs mx-auto text-lg leading-relaxed">
               <strong className="text-white">Canada ↔ Bénin</strong>
             </p>
           </div>
@@ -181,10 +181,11 @@ const Register = () => {
       </div>
 
       {/* ── Formulaire ── */}
-      <div className="w-full lg:w-1/2 flex flex-col justify-center px-8 sm:px-12 lg:px-20 py-12 overflow-y-auto">
+      <div className="w-full lg:w-1/2 flex flex-col justify-center px-8 sm:px-12 lg:px-20 py-12 overflow-y-auto"
+        >
         <Link
           to="/"
-          className="inline-flex items-center gap-2 text-[#A1A1AA] hover:text-white transition-colors mb-8 w-fit text-sm"
+          className="inline-flex items-center gap-2 text-white hover:text-white transition-colors mb-8 w-fit text-lg"
           data-testid="back-to-home"
         >
           <ArrowLeft className="w-4 h-4" />
@@ -194,15 +195,15 @@ const Register = () => {
         <div className="max-w-md w-full mx-auto lg:mx-0">
           <div className="mb-8">
             <img src={logoImg} alt="Prestige Horizon" className="h-12 mb-6 lg:hidden" />
-            <h1 className="text-3xl font-bold text-white mb-1">{t.createAccount}</h1>
-            <p className="text-[#A1A1AA] text-sm">{t.subtitle}</p>
+            <h1 className="text-3xl font-bold text-yellow-500 mb-1">{t.createAccount}</h1>
+            <p className="text-yellow-500 text-lg">{t.subtitle}</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
 
             {/* Nom complet */}
             <div className="space-y-1.5">
-              <Label className="text-[#A1A1AA] text-sm">{t.fullNameLabel}</Label>
+              <Label className="text-white text-sm">{t.fullNameLabel}</Label>
               <div className="relative">
                 <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#A1A1AA]" />
                 <Input
@@ -219,7 +220,7 @@ const Register = () => {
 
             {/* Email */}
             <div className="space-y-1.5">
-              <Label className="text-[#A1A1AA] text-sm">{t.emailLabel}</Label>
+              <Label className="text-white text-sm">{t.emailLabel}</Label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#A1A1AA]" />
                 <Input
@@ -236,7 +237,7 @@ const Register = () => {
 
             {/* Pays — seulement Canada / Bénin */}
             <div className="space-y-1.5">
-              <Label className="text-[#A1A1AA] text-sm">{t.countryLabel}</Label>
+              <Label className="text-white text-sm">{t.countryLabel}</Label>
               <div className="relative">
                 <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#A1A1AA] z-10 pointer-events-none" />
                 <Select value={formData.country} onValueChange={set('country')}>
@@ -259,7 +260,7 @@ const Register = () => {
                 </Select>
               </div>
               {selectedCountry && (
-                <p className="text-[#555] text-xs flex items-center gap-1">
+                <p className="text-white/60 text-xs flex items-center gap-1">
                   <Shield className="w-3 h-3" />
                   {t.countryWarning}
                 </p>
@@ -268,7 +269,7 @@ const Register = () => {
 
             {/* Téléphone */}
             <div className="space-y-1.5">
-              <Label className="text-[#A1A1AA] text-sm">{t.phoneLabel}</Label>
+              <Label className="text-white text-sm">{t.phoneLabel}</Label>
               <div className="relative">
                 <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#A1A1AA]" />
                 <Input
@@ -281,12 +282,12 @@ const Register = () => {
                   data-testid="register-phone"
                 />
               </div>
-              <p className="text-[#555] text-xs">{t.phoneFormat} ({formData.country === 'Canada' ? '+1' : '+229'})</p>
+              <p className="text-white/60 text-xs">{t.phoneFormat} ({formData.country === 'Canada' ? '+1' : '+229'})</p>
             </div>
 
             {/* Mot de passe */}
             <div className="space-y-1.5">
-              <Label className="text-[#A1A1AA] text-sm">{t.passwordLabel}</Label>
+              <Label className="text-white text-sm">{t.passwordLabel}</Label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#A1A1AA]" />
                 <Input
@@ -341,7 +342,7 @@ const Register = () => {
             </Button>
           </form>
 
-          <p className="mt-6 text-center text-[#A1A1AA] text-sm">
+          <p className="mt-6 text-center text-white/60 text-sm">
             {t.hasAccount}{' '}
             <Link to="/login" className="text-[#D4AF37] hover:underline font-medium" data-testid="register-login-link">
               {t.loginLink}
