@@ -128,32 +128,31 @@ const DICTIONARY = {
 
 /* ─── Helpers ─── */
 const DELIVERY_ASSETS = {
-  mtn:           { logo: mtnLogo,  color: '#FFCC00', label: 'MTN Mobile Money' },
-  moov:          { logo: moovLogo, color: '#00a51b', label: 'Moov Money' },
-  bank_transfer: { logo: null,     color: '#D4AF37', label: 'Virement bancaire / Bank transfer', initials: 'VB' },
-  interac:       { logo: null,     color: '#D4AF37', label: 'Interac / Bancaire', initials: 'IC' },
+  mtn: { logo: mtnLogo, color: '#FFCC00', label: 'MTN Mobile Money' },
+  moov: { logo: moovLogo, color: '#00a51b', label: 'Moov Money' },
+  bank_transfer: { logo: null, color: '#D4AF37', label: 'Virement bancaire / Bank transfer', initials: 'VB' },
+  interac: { logo: null, color: '#D4AF37', label: 'Interac / Bancaire', initials: 'IC' },
 };
 const PAYMENT_ICONS = { interac: Building2, crypto_usdc: CreditCard, bank_transfer: Building2 };
 
 const fmtCAD = (n) => new Intl.NumberFormat('fr-CA', { style: 'currency', currency: 'CAD' }).format(n);
 const fmtXOF = (n) => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'XOF', minimumFractionDigits: 0 }).format(n);
-const fmt    = (amount, currency) => currency === 'CAD' ? fmtCAD(amount) : fmtXOF(amount);
+const fmt = (amount, currency) => currency === 'CAD' ? fmtCAD(amount) : fmtXOF(amount);
 
 /* ─── Step bar ─── */
 const StepBar = ({ step, t }) => (
   <div className="flex items-start gap-0 mb-10">
     {t.steps.map((label, i) => {
       const s = i + 1;
-      const done   = step > s;
+      const done = step > s;
       const active = step === s;
       return (
         <div key={s} className="flex items-center flex-1 last:flex-none">
           <div className="flex flex-col items-center gap-1.5">
-            <div className={`w-9 h-9 rounded-full flex items-center justify-center font-semibold text-sm transition-all ${
-              done   ? 'bg-[#D4AF37] text-black' :
-              active ? 'bg-[#D4AF37]/20 border-2 border-[#D4AF37] text-[#D4AF37]' :
-                       'bg-[#1A1A1A] text-[#555]'
-            }`}>
+            <div className={`w-9 h-9 rounded-full flex items-center justify-center font-semibold text-sm transition-all ${done ? 'bg-[#D4AF37] text-black' :
+                active ? 'bg-[#D4AF37]/20 border-2 border-[#D4AF37] text-[#D4AF37]' :
+                  'bg-[#1A1A1A] text-[#555]'
+              }`}>
               {done ? <Check className="w-4 h-4" /> : s}
             </div>
             <span className={`text-xs text-center leading-tight max-w-[72px] ${active ? 'text-[#D4AF37]' : 'text-[#555]'}`}>
@@ -174,12 +173,11 @@ const SelectCard = ({ selected, onClick, color = '#D4AF37', children }) => (
   <button
     type="button"
     onClick={onClick}
-    className={`w-full text-left rounded-xl border p-4 transition-all duration-200 ${
-      selected ? 'bg-white/5' : 'border-white/10 bg-transparent hover:border-white/20 hover:bg-white/5'
-    }`}
+    className={`w-full text-left rounded-xl border p-4 transition-all duration-200 ${selected ? 'bg-white/5' : 'border-white/10 bg-transparent hover:border-white/20 hover:bg-white/5'
+      }`}
     style={{
       borderColor: selected ? color : undefined,
-      boxShadow:   selected ? `0 0 16px ${color}25` : undefined,
+      boxShadow: selected ? `0 0 16px ${color}25` : undefined,
     }}
   >
     {children}
@@ -210,22 +208,34 @@ const CopyBtn = ({ text }) => {
 };
 
 /* ════════════════════════════════════════════════════ */
-export const NewTransfer = () => {
-  const navigate = useNavigate();
-  const [lang, setLang] = useState('fr'); // 'fr' ou 'en'
+export const NewTransfer = ({ onLangChange }) => {
+
+  const [lang, setLang] = useState(() => localStorage.getItem('prestige_lang') || 'fr');
+
+  useEffect(() => {
+    document.title = lang === 'fr'
+      ? "Nouveau transfert | Prestige Money Transfer"
+      : "New Transfer | Prestige Money Transfer";
+  }, [lang]); // Se déclenche au chargement et si la langue change
+
+  useEffect(() => {
+    localStorage.setItem('prestige_lang', lang);
+    if (onLangChange) onLangChange(lang);
+  }, [lang, onLangChange]);
+
   const t = DICTIONARY[lang];
 
-  const [step,       setStep]       = useState(1);
-  const [corridors,  setCorridors]  = useState([]);
-  const [loading,    setLoading]    = useState(false);
-  const [calcLoading,setCalcLoading]= useState(false);
-  const [calculation,setCalculation]= useState(null);
-  const [created,    setCreated]    = useState(null);
+  const [step, setStep] = useState(1);
+  const [corridors, setCorridors] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [calcLoading, setCalcLoading] = useState(false);
+  const [calculation, setCalculation] = useState(null);
+  const [created, setCreated] = useState(null);
 
   /* upload proof state */
-  const [proofFile,      setProofFile]      = useState(null);
+  const [proofFile, setProofFile] = useState(null);
   const [proofUploading, setProofUploading] = useState(false);
-  const [proofUploaded,  setProofUploaded]  = useState(false);
+  const [proofUploaded, setProofUploaded] = useState(false);
   const fileRef = useRef(null);
 
   const [form, setForm] = useState({
@@ -263,16 +273,16 @@ export const NewTransfer = () => {
   useEffect(() => { calculate(); }, [calculate]);
 
   const selectedCorridor = corridors.find((c) => c.key === form.corridor);
-  const needsPhone   = ['mtn', 'moov'].includes(form.delivery_method);
-  const needsBank    = form.delivery_method === 'bank_transfer';
+  const needsPhone = ['mtn', 'moov'].includes(form.delivery_method);
+  const needsBank = form.delivery_method === 'bank_transfer';
   const needsInterac = form.delivery_method === 'interac';
 
   const okStep1 = form.corridor && form.payment_method && form.send_amount &&
     parseFloat(form.send_amount) > 0 && !calcLoading;
 
   const okStep2 = form.delivery_method && form.receiver_name &&
-    (!needsPhone   || form.receiver_phone) &&
-    (!needsBank    || (form.receiver_bank_name && form.receiver_bank_account)) &&
+    (!needsPhone || form.receiver_phone) &&
+    (!needsBank || (form.receiver_bank_name && form.receiver_bank_account)) &&
     (!needsInterac || form.receiver_interac_email);
 
   const handleSubmit = async () => {
@@ -280,18 +290,18 @@ export const NewTransfer = () => {
     try {
       const token = sessionStorage.getItem('token');
       const payload = {
-        corridor:                form.corridor,
-        payment_method:          form.payment_method,
-        delivery_method:         form.delivery_method,
-        send_amount:             parseFloat(form.send_amount),
-        receiver_name:           form.receiver_name,
-        receiver_phone:          form.receiver_phone || undefined,
+        corridor: form.corridor,
+        payment_method: form.payment_method,
+        delivery_method: form.delivery_method,
+        send_amount: parseFloat(form.send_amount),
+        receiver_name: form.receiver_name,
+        receiver_phone: form.receiver_phone || undefined,
         receiver_mobile_network: form.receiver_mobile_network || undefined,
-        receiver_bank_name:      form.receiver_bank_name || undefined,
-        receiver_bank_account:   form.receiver_bank_account || undefined,
-        receiver_bank_iban:      form.receiver_bank_iban || undefined,
-        receiver_interac_email:  form.receiver_interac_email || undefined,
-        notes:                   form.notes || undefined,
+        receiver_bank_name: form.receiver_bank_name || undefined,
+        receiver_bank_account: form.receiver_bank_account || undefined,
+        receiver_bank_iban: form.receiver_bank_iban || undefined,
+        receiver_interac_email: form.receiver_interac_email || undefined,
+        notes: form.notes || undefined,
       };
       const { data } = await axios.post(`${API_URL}/api/transfers`, payload, {
         headers: { Authorization: `Bearer ${token}` },
@@ -330,15 +340,15 @@ export const NewTransfer = () => {
       <Navbar lang={lang} setLang={setLang} />
 
       <main className="pt-24 pb-16 px-4 sm:px-6 lg:px-8 max-w-2xl mx-auto">
-        
+
         {/* Header avec bouton de langue */}
         <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold text-white">{t.title}</h1>
             <p className="text-[#A1A1AA] mt-1">{t.subtitle}</p>
           </div>
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             size="sm"
             onClick={() => setLang(l => l === 'fr' ? 'en' : 'fr')}
             className="self-start sm:self-center border-white/10 text-white hover:bg-white/5 flex items-center gap-2"
@@ -444,10 +454,10 @@ export const NewTransfer = () => {
             {calculation && !calcLoading && (
               <Card className="bg-[#0A0A0A] border-[#D4AF37]/20">
                 <CardContent className="p-5 space-y-3">
-                  <Row label={t.sentAmount}   value={fmt(form.send_amount, calculation.send_currency)} />
+                  <Row label={t.sentAmount} value={fmt(form.send_amount, calculation.send_currency)} />
                   <Row label={t.fees} value={fmt(calculation.fee, calculation.send_currency)} />
                   <div className="h-px bg-white/10" />
-                  <Row label={t.totalPay}    value={fmt(calculation.total_charged, calculation.send_currency)} bold />
+                  <Row label={t.totalPay} value={fmt(calculation.total_charged, calculation.send_currency)} bold />
                   <div className="h-px bg-white/10" />
                   <Row label={t.receiverGets} value={fmt(calculation.receive_amount, calculation.receive_currency)} gold />
                   <Row label={t.rate} value={`1 ${calculation.send_currency} = ${calculation.exchange_rate} ${calculation.receive_currency}`} />
@@ -586,7 +596,7 @@ export const NewTransfer = () => {
                 <CardTitle className="text-white text-base">{t.summaryTitle}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <Row label="Corridor"          value={selectedCorridor?.label} />
+                <Row label="Corridor" value={selectedCorridor?.label} />
                 <Row label={t.paymentMethod} value={selectedCorridor?.payment_methods?.find((p) => p.key === form.payment_method)?.label} />
                 <Row label={t.deliveryMethod} value={DELIVERY_ASSETS[form.delivery_method]?.label} />
               </CardContent>
@@ -595,10 +605,10 @@ export const NewTransfer = () => {
             {calculation && (
               <Card className="bg-[#0A0A0A] border-[#D4AF37]/20">
                 <CardContent className="p-5 space-y-3">
-                  <Row label={t.sentAmount}       value={fmt(form.send_amount, calculation.send_currency)} />
-                  <Row label={t.fees}              value={fmt(calculation.fee, calculation.send_currency)} />
+                  <Row label={t.sentAmount} value={fmt(form.send_amount, calculation.send_currency)} />
+                  <Row label={t.fees} value={fmt(calculation.fee, calculation.send_currency)} />
                   <div className="h-px bg-white/10" />
-                  <Row label={t.totalPay}      value={fmt(calculation.total_charged, calculation.send_currency)} bold />
+                  <Row label={t.totalPay} value={fmt(calculation.total_charged, calculation.send_currency)} bold />
                   <div className="h-px bg-white/10" />
                   <Row label={t.receiverGets} value={fmt(calculation.receive_amount, calculation.receive_currency)} gold />
                 </CardContent>
@@ -609,11 +619,11 @@ export const NewTransfer = () => {
               <CardContent className="p-5 space-y-3">
                 <p className="text-[#A1A1AA] text-xs uppercase tracking-wider mb-2">{t.receiverText}</p>
                 <Row label="Nom / Name" value={form.receiver_name} />
-                {form.receiver_phone         && <Row label="Téléphone"    value={form.receiver_phone} />}
-                {form.receiver_bank_name     && <Row label="Banque"       value={form.receiver_bank_name} />}
-                {form.receiver_bank_account  && <Row label="N° compte"    value={form.receiver_bank_account} />}
+                {form.receiver_phone && <Row label="Téléphone" value={form.receiver_phone} />}
+                {form.receiver_bank_name && <Row label="Banque" value={form.receiver_bank_name} />}
+                {form.receiver_bank_account && <Row label="N° compte" value={form.receiver_bank_account} />}
                 {form.receiver_interac_email && <Row label="Email Interac" value={form.receiver_interac_email} />}
-                {form.notes                  && <Row label="Notes"        value={form.notes} />}
+                {form.notes && <Row label="Notes" value={form.notes} />}
               </CardContent>
             </Card>
 
@@ -714,9 +724,8 @@ export const NewTransfer = () => {
                         e.preventDefault();
                         fileRef.current?.click();
                       }}
-                      className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${
-                        proofFile ? 'border-[#D4AF37]/50 bg-[#D4AF37]/5' : 'border-white/10 hover:border-[#D4AF37]/30 hover:bg-white/5'
-                      }`}
+                      className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${proofFile ? 'border-[#D4AF37]/50 bg-[#D4AF37]/5' : 'border-white/10 hover:border-[#D4AF37]/30 hover:bg-white/5'
+                        }`}
                     >
                       <input
                         ref={fileRef}

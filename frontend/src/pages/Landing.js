@@ -237,8 +237,21 @@ const LiveCalculator = ({ lang, t }) => {
 };
 
 /* ── Composant principal de la page d'accueil ── */
-const Landing = () => {
-  const [lang, setLang] = useState('fr');
+const Landing = ({ onLangChange }) => {
+
+  const [lang, setLang] = useState(() => localStorage.getItem('prestige_lang') || 'fr');
+
+  useEffect(() => {
+    document.title = lang === 'fr'
+      ? "Page De Destination | Prestige Money Transfer"
+      : "Landing Page | Prestige Money Transfer";
+  }, [lang]); // Se déclenche au chargement et si la langue change
+
+  useEffect(() => {
+    localStorage.setItem('prestige_lang', lang);
+    if (onLangChange) onLangChange(lang);
+  }, [lang, onLangChange]);
+  
   const t = translations[lang];
 
   const featureIcons = [Clock, Shield, Smartphone, Building2];

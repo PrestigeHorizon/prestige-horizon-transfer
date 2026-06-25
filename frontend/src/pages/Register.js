@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -82,9 +82,20 @@ const translations = {
   }
 };
 
-const Register = () => {
-  // Initialise avec le localStorage s'il existe, sinon 'fr'
+const Register = ({ onLangChange }) => {
   const [lang, setLang] = useState(() => localStorage.getItem('prestige_lang') || 'fr');
+
+  useEffect(() => {
+    document.title = lang === 'fr'
+      ? "Inscription | Prestige Money Transfer"
+      : "Register | Prestige Money Transfer";
+  }, [lang]); // Se déclenche au chargement et si la langue change
+
+  useEffect(() => {
+    localStorage.setItem('prestige_lang', lang);
+    if (onLangChange) onLangChange(lang);
+  }, [lang, onLangChange]);
+
   const t = translations[lang] || translations.fr;
 
   const { register } = useAuth();
@@ -182,7 +193,7 @@ const Register = () => {
 
       {/* ── Formulaire ── */}
       <div className="w-full lg:w-1/2 flex flex-col justify-center px-8 sm:px-12 lg:px-20 py-12 overflow-y-auto"
-        >
+      >
         <Link
           to="/"
           className="inline-flex items-center gap-2 text-white hover:text-white transition-colors mb-8 w-fit text-lg"

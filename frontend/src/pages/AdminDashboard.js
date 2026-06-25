@@ -156,15 +156,28 @@ const StatusBadge = ({ status, lang }) => {
 };
 
 /* ════════════════════════════════════════════════════ */
-const AdminDashboard = () => {
+const AdminDashboard = ({ onLangChange }) => {
+  const [lang, setLang] = useState(() => localStorage.getItem('prestige_lang') || 'fr');
+
+  useEffect(() => {
+    document.title = lang === 'fr'
+      ? "Admin Dashboard | Prestige Money Transfer"
+      : "Admin Dashboard | Prestige Money Transfer";
+  }, [lang]); // Se déclenche au chargement et si la langue change
+
+  useEffect(() => {
+    localStorage.setItem('prestige_lang', lang);
+    if (onLangChange) onLangChange(lang);
+  }, [lang, onLangChange]);
+
   const { token } = useAuth();
 
   // État de la langue par défaut (détecte la langue du navigateur ou FR)
-  const [lang, setLang] = useState(() => {
+  /*const [lang, setLang] = useState(() => {
     const saved = localStorage.getItem('admin_lang');
     if (saved) return saved;
     return navigator.language?.startsWith('en') ? 'en' : 'fr';
-  });
+  });*/
 
   const [transfers, setTransfers] = useState([]);
   const [filteredTransfers, setFilteredTransfers] = useState([]);

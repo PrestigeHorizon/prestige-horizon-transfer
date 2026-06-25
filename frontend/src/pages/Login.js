@@ -47,6 +47,13 @@ const translations = {
 
 const Login = ({ onLangChange }) => {
   const [lang, setLang] = useState(() => localStorage.getItem('prestige_lang') || 'fr');
+
+  useEffect(() => {
+    document.title = lang === 'fr'
+      ? "Connexion | Prestige Money Transfer"
+      : "Login | Prestige Money Transfer";
+  }, [lang]); // Se déclenche au chargement et si la langue change
+
   const t = translations[lang] || translations.fr;
 
   const { login } = useAuth();
@@ -94,7 +101,7 @@ const Login = ({ onLangChange }) => {
       {/* Left Side - Form (Ajusté pour défiler proprement si l'écran est très petit en hauteur) */}
       <div className="w-full lg:w-1/2 flex flex-col justify-center items-center px-4 sm:px-8 md:px-16 lg:px-20 py-12 min-h-screen">
         <div className="max-w-md w-full mx-auto flex flex-col h-full justify-center">
-          
+
           <Link
             to="/"
             className="flex items-center gap-2 text-white hover:text-yellow-500 transition-colors mb-8 w-fit text-lg"
@@ -193,7 +200,7 @@ const Login = ({ onLangChange }) => {
           </p>
         </div>
       </div>
-      
+
     </div>
   );
 };

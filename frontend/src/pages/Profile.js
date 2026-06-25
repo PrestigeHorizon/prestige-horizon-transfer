@@ -30,6 +30,7 @@ const InfoRow = ({ icon: Icon, label, value }) => (
 
 /* ════════════════════════════════════════════════════ */
 const Profile = () => {
+  
   const { user, logout } = useAuth();
 
   /* Modification téléphone */
