@@ -26,28 +26,31 @@ load_dotenv(ROOT_DIR / '.env')
 
 app = FastAPI(title="Prestige Money Transfer API")
 
-origins = [
-    "http://localhost:3000",  # Frontend local (souvent port 3000 ou 5173 pour Vite)
-    "http://localhost:5173",
-    "https://prestige-horizon-transfer.onrender.com", # URL Frontend
-]
+# Récupération des origines depuis le .env (avec repli sur vos ports locaux)
+cors_env = os.environ.get("CORS_ORIGINS", "*")
+if cors_env == "*":
+    origins = ["*"]
+else:
+    origins = [o.strip() for o in cors_env.split(",")]
 
-# 2. Ajout du middleware à l'application
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,          # Autorise les domaines de la liste
-    allow_credentials=True,
-    allow_methods=["*"],            # Autorise toutes les méthodes (GET, POST, PUT, DELETE, etc.)
-    allow_headers=["*"],            # Autorise tous les headers (y compris Authorization, Content-Type, etc.)
+    allow_origins=origins,
+    allow_credentials=True if origins != ["*"] else False, # True est interdit si origins = ["*"]
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # ============================================================
 # DB & AUTH
 # ============================================================
 
+# Connexion propre à MongoDB Atlas
 mongo_url = os.environ['MONGO_URL']
 client    = AsyncIOMotorClient(mongo_url)
-db        = client[os.environ['DB_NAME']]
+
+# Utilise directement la DB définie dans l'URI ou celle du .env
+db        = client.get_default_database() if "mongodb+srv" in mongo_url else client[os.environ['DB_NAME']]
 
 JWT_SECRET           = os.environ.get('JWT_SECRET', 'prestige-horizon-secret-key-2024')
 JWT_ALGORITHM        = "HS256"
@@ -617,6 +620,7 @@ async def create_transfer(transfer: TransferCreate, user: dict = Depends(get_cur
             raise HTTPException(400, "Email Interac du receveur requis")
         if not re.match(r"^[^@]+@[^@]+\.[^@]+$", transfer.receiver_interac_email):
             raise HTTPException(400, "Adresse courriel Interac invalide")
+            
     min_amt = c.get("min_amount_cad") or c.get("min_amount_xof")
     max_amt = c.get("max_amount_cad") or c.get("max_amount_xof")
     if not (min_amt <= transfer.send_amount <= max_amt):
@@ -635,21 +639,55 @@ async def create_transfer(transfer: TransferCreate, user: dict = Depends(get_cur
     instructions   = build_payment_instructions(transfer.payment_method, tracking, calc["total_charged"])
 
     doc = {
-        "id": transfer_id, "user_id": user["id"], "corridor": transfer.corridor,
-        "payment_method": transfer.payment_method, "delivery_method": transfer.delivery_method,
-        "send_amount": transfer.send_amount, **calc,
-        "receiver_name": transfer.receiver_name, "receiver_phone": transfer.receiver_phone,
-        "receiver_mobile_network": network, "receiver_bank_name": transfer.receiver_bank_name,
-        "receiver_bank_account": transfer.receiver_bank_account, "receiver_bank_iban": transfer.receiver_bank_iban,
+        "id": transfer_id, 
+        "user_id": user["id"], 
+        "corridor": transfer.corridor,
+        "payment_method": transfer.payment_method,
+        "delivery_method": transfer.delivery_method,
+        "send_amount": transfer.send_amount,
+        "send_currency": calc["send_currency"],
+        "fee": calc["fee"],
+        "total_charged": calc["total_charged"],
+        "receive_amount": calc["receive_amount"],
+        "receive_currency": calc["receive_currency"],
+        "exchange_rate": calc["exchange_rate"],
+        "receiver_name": transfer.receiver_name,
+        "receiver_phone": transfer.receiver_phone,
+        "receiver_mobile_network": network,
+        "receiver_bank_name": transfer.receiver_bank_name,
+        "receiver_bank_account": transfer.receiver_bank_account,
+        "receiver_bank_iban": transfer.receiver_bank_iban,
         "receiver_interac_email": transfer.receiver_interac_email,
-        "sender_name": user["full_name"], "sender_email": user["email"],
-        "sender_phone": user["phone"], "sender_country": user["country"],
-        "status": "pending", "tracking_number": tracking,
-        "admin_notes": None, "notes": transfer.notes,
-        "payment_proof_filename": None, "payment_instructions": instructions,
-        "created_at": now, "updated_at": now,
+        "sender_name": user["full_name"],
+        "sender_email": user["email"],
+        "sender_phone": user["phone"],
+        "sender_country": user["country"],
+        "status": "pending",
+        "tracking_number": tracking,
+        "admin_notes": "",
+        "notes": transfer.notes,
+        "payment_proof_filename": None,
+        "payment_instructions": instructions,
+        "created_at": now,
+        "updated_at": now
     }
+    
+    # Insertion en Base de données
     await db.transfers.insert_one(doc)
+    
+    # 💥 DÉCLENCHEMENT DE L'E-MAIL DE CONFIRMATION
+    try:
+        subject, html_content = email_confirmation(doc)
+        # On utilise une tâche asynchrone en arrière-plan pour ne pas ralentir la réponse API
+        import asyncio
+        asyncio.create_task(send_email(to=user["email"], subject=subject, html=html_content))
+    except Exception as mail_err:
+        logger.error(f"Erreur lors de la préparation de l'email : {mail_err}")
+
+    return enrich_transfer(doc)
+
+    # On n'oublie pas d'inclure le routeur dans l'application FastAPI
+    app.include_router(api_router)
 
     # Email de confirmation (non bloquant)
     if doc.get("sender_email"):
@@ -749,10 +787,15 @@ async def update_transfer(transfer_id: str, update: TransferUpdate, admin: dict=
     await db.transfers.update_one({"id": transfer_id}, {"$set": patch})
     updated = await db.transfers.find_one({"id": transfer_id}, {"_id":0,"payment_proof_data":0})
 
-    # Email de complétion (non bloquant)
+    # Email de complétion (non bloquant via asyncio.create_task)
     if update.status == "completed" and updated.get("sender_email"):
-        subj, html = email_completed(updated)
-        await send_email(updated["sender_email"], subj, html)
+        try:
+            subj, html = email_completed(updated)
+            import asyncio
+            asyncio.create_task(send_email(to=updated["sender_email"], subject=subj, html=html))
+            logger.info(f"Tâche d'envoi d'email de complétion lancée pour {updated['sender_email']}")
+        except Exception as mail_err:
+            logger.error(f"Erreur lors de la préparation de l'email de complétion : {mail_err}")
 
     return TransferResponse(**enrich_transfer(updated))
 
