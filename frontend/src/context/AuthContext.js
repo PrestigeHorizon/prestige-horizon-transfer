@@ -70,6 +70,7 @@ export const AuthProvider = ({ children }) => {
     sessionStorage.removeItem('token');
     setToken(null);
     setUser(null);
+    window.location.href = '/';
   };
 
   const value = {

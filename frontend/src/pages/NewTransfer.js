@@ -776,7 +776,7 @@ export const NewTransfer = ({ onLangChange, initialTransfer = null }) => {
             <div className="pt-2 text-center">
               <Button
                 variant="ghost"
-                onClick={() => navigate('/')}
+                onClick={() => navigate('/Dashboard')}
                 className="text-[#A1A1AA] hover:text-white hover:bg-white/5 text-sm inline-flex items-center gap-2"
               >
                 <Home className="w-4 h-4" />
