@@ -50,8 +50,12 @@ mongo_url = os.environ['MONGO_URL']
 client    = AsyncIOMotorClient(mongo_url)
 
 # Utilise directement la DB définie dans l'URI ou celle du .env
-db        = client.get_default_database() if "mongodb+srv" in mongo_url else client[os.environ['DB_NAME']]
-
+try:
+    db = client.get_default_database()
+except Exception:
+    # Si l'URL n'a pas de nom par défaut, on se rabat sur la variable d'environnement ou 'prestige_db'
+    db = client[os.environ.get('DB_NAME', 'prestige_db')]
+    
 JWT_SECRET           = os.environ.get('JWT_SECRET', 'prestige-horizon-secret-key-2024')
 JWT_ALGORITHM        = "HS256"
 JWT_EXPIRATION_HOURS = 24
