@@ -119,7 +119,7 @@ const TransferHistory = () => {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div>
             <h1 className="text-3xl font-bold text-white">Historique des transferts</h1>
-            <p className="text-[#A1A1AA] mt-1">Tous vos envois Canada ↔ Bénin</p>
+            <p className="text-white mt-1">Tous vos envois Canada ↔ Bénin</p>
           </div>
           <Link to="/new-transfer">
             <Button className="bg-[#D4AF37] text-black hover:bg-[#B59326] font-semibold" data-testid="new-transfer-btn">
