@@ -339,7 +339,7 @@ export const NewTransfer = ({ onLangChange, initialTransfer = null }) => {
   };
 
   return (
-    <div className="min-h-screen bg-[#050505]" data-testid="new-transfer-page">
+    <div className="newTransfer min-h-screen bg-[#050505]" data-testid="new-transfer-page">
       {/* Synchronisation de la navbar globale */}
       <Navbar lang={lang} setLang={setLang} />
 
