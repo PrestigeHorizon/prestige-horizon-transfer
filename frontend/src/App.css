@@ -15,7 +15,8 @@
 }
 
 .dashboard,
-.adminDashboard {
+.adminDashboard ,
+.transferHistory {
     background-image: url('./images/background.png');
     /*background-size: cover;
     background-position: center;
