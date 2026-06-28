@@ -11,7 +11,7 @@ import { toast } from 'sonner';
 import {
   ArrowRight, Check, Loader2, ArrowLeft, CreditCard,
   Building2, ChevronRight, Info, Upload, Copy, CheckCircle2,
-  FileText, Smartphone, Languages
+  FileText, Smartphone, Languages, Home
 } from 'lucide-react';
 import mtnLogo from '../images/providers/mtn-momo.png';
 import moovLogo from '../images/providers/moov-money.png';
@@ -70,7 +70,8 @@ const DICTIONARY = {
     successCreated: 'Transfert créé ! Suivez les instructions de paiement.',
     errorCreation: 'Erreur lors de la création',
     successProof: 'Preuve envoyée ! Notre équipe va valider votre paiement.',
-    errorProof: "Erreur lors de l'envoi de la preuve"
+    errorProof: "Erreur lors de l'envoi de la preuve",
+    finishLater: 'Retourner à l’accueil / Ajouter la preuve plus tard'
   },
   en: {
     title: 'New Transfer',
@@ -122,7 +123,8 @@ const DICTIONARY = {
     successCreated: 'Transfer created! Follow the payment instructions.',
     errorCreation: 'Error during creation',
     successProof: 'Proof sent! Our team will validate your payment.',
-    errorProof: 'Error while sending proof'
+    errorProof: 'Error while sending proof',
+    finishLater: 'Back to Home / Add proof later'
   }
 };
 
@@ -208,15 +210,15 @@ const CopyBtn = ({ text }) => {
 };
 
 /* ════════════════════════════════════════════════════ */
-export const NewTransfer = ({ onLangChange }) => {
-
+export const NewTransfer = ({ onLangChange, initialTransfer = null }) => {
+  const navigate = useNavigate();
   const [lang, setLang] = useState(() => localStorage.getItem('prestige_lang') || 'fr');
 
   useEffect(() => {
     document.title = lang === 'fr'
       ? "Nouveau transfert | Prestige Money Transfer"
       : "New Transfer | Prestige Money Transfer";
-  }, [lang]); // Se déclenche au chargement et si la langue change
+  }, [lang]);
 
   useEffect(() => {
     localStorage.setItem('prestige_lang', lang);
@@ -225,12 +227,13 @@ export const NewTransfer = ({ onLangChange }) => {
 
   const t = DICTIONARY[lang];
 
-  const [step, setStep] = useState(1);
+  // Permet de sauter directement à l'étape 4 si un transfert existant est fourni
+  const [step, setStep] = useState(initialTransfer ? 4 : 1);
   const [corridors, setCorridors] = useState([]);
   const [loading, setLoading] = useState(false);
   const [calcLoading, setCalcLoading] = useState(false);
   const [calculation, setCalculation] = useState(null);
-  const [created, setCreated] = useState(null);
+  const [created, setCreated] = useState(initialTransfer);
 
   /* upload proof state */
   const [proofFile, setProofFile] = useState(null);
@@ -337,6 +340,7 @@ export const NewTransfer = ({ onLangChange }) => {
 
   return (
     <div className="min-h-screen bg-[#050505]" data-testid="new-transfer-page">
+      {/* Synchronisation de la navbar globale */}
       <Navbar lang={lang} setLang={setLang} />
 
       <main className="pt-24 pb-16 px-4 sm:px-6 lg:px-8 max-w-2xl mx-auto">
@@ -362,6 +366,7 @@ export const NewTransfer = ({ onLangChange }) => {
 
         {/* ─────────────── STEP 1 ─────────────── */}
         {step === 1 && (
+          /* ... Pas de changement sur le Step 1 ... */
           <div className="space-y-8 animate-fade-in">
             <div className="space-y-3">
               <Label className="text-[#A1A1AA] uppercase text-xs tracking-wider">{t.direction}</Label>
@@ -479,6 +484,7 @@ export const NewTransfer = ({ onLangChange }) => {
 
         {/* ─────────────── STEP 2 ─────────────── */}
         {step === 2 && (
+          /* ... Pas de changement sur le Step 2 ... */
           <div className="space-y-6 animate-fade-in" data-testid="step-2">
             <div className="space-y-3">
               <Label className="text-[#A1A1AA] uppercase text-xs tracking-wider">{t.deliveryMethod}</Label>
@@ -590,6 +596,7 @@ export const NewTransfer = ({ onLangChange }) => {
 
         {/* ─────────────── STEP 3 ─────────────── */}
         {step === 3 && (
+          /* ... Pas de changement sur le Step 3 ... */
           <div className="space-y-5 animate-fade-in">
             <Card className="bg-[#0F0F0F] border-white/10">
               <CardHeader className="pb-2">
@@ -764,6 +771,18 @@ export const NewTransfer = ({ onLangChange }) => {
                 )}
               </CardContent>
             </Card>
+
+            {/* Bouton de sortie pour éviter de bloquer le workflow utilisateur */}
+            <div className="pt-2 text-center">
+              <Button
+                variant="ghost"
+                onClick={() => navigate('/')}
+                className="text-[#A1A1AA] hover:text-white hover:bg-white/5 text-sm inline-flex items-center gap-2"
+              >
+                <Home className="w-4 h-4" />
+                {t.finishLater}
+              </Button>
+            </div>
           </div>
         )}
       </main>
