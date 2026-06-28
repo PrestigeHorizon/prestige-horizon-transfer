@@ -3,7 +3,6 @@ import axios from 'axios';
 import { useAuth } from '@/context/AuthContext';
 import { Navbar } from '@/components/Navbar';
 import { Button } from '@/components/ui/button';
-/*import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';*/
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -13,7 +12,7 @@ import { toast } from 'sonner';
 import {
   Clock, CheckCircle, AlertCircle, Loader2, Search, Filter,
   Users, DollarSign, TrendingUp, ChevronRight, RefreshCw,
-  Wallet, Eye, Image as ImageIcon, ExternalLink, Languages
+  Wallet, Eye, Image as ImageIcon, ExternalLink, Languages, Mail, Phone, MapPin
 } from 'lucide-react';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
@@ -57,10 +56,14 @@ const TRANSLATIONS = {
     statsPending: 'En cours',
     statsUsers: 'Utilisateurs',
     statsCompleted: 'Terminés',
-    volumeCad: 'Completed CAD Volume',
-    volumeXof: 'Completed XOF Volume',
+    volumeCad: 'Volume CAD complété',
+    volumeXof: 'Volume XOF complété',
     feesCollected: 'Frais collectés :',
     refresh: 'Actualiser',
+    usersListTitle: 'Liste des utilisateurs inscrits',
+    searchUserPlaceholder: 'Rechercher un utilisateur (Nom, Email, Tel)...',
+    noUsersFound: 'Aucun utilisateur trouvé',
+    userJoined: 'Inscrit le'
   },
   en: {
     dashboardTitle: 'Admin Dashboard',
@@ -103,6 +106,10 @@ const TRANSLATIONS = {
     volumeXof: 'Completed XOF Volume',
     feesCollected: 'Fees collected:',
     refresh: 'Refresh',
+    usersListTitle: 'Registered Users List',
+    searchUserPlaceholder: 'Search user (Name, Email, Phone)...',
+    noUsersFound: 'No users found',
+    userJoined: 'Joined on'
   }
 };
 
@@ -137,12 +144,11 @@ const PAYMENT_LABELS = {
   bank_transfer: { fr: 'Virement', en: 'Wire Transfer' },
 };
 
-// Formatage adaptatif selon la langue sélectionnée
 const fmtCAD = (n, lang) => new Intl.NumberFormat(lang === 'fr' ? 'fr-CA' : 'en-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 }).format(n);
 const fmtXOF = (n, lang) => new Intl.NumberFormat(lang === 'fr' ? 'fr-FR' : 'en-US', { style: 'currency', currency: 'XOF', minimumFractionDigits: 0 }).format(n);
 const fmt = (n, cur, lang) => cur === 'CAD' ? fmtCAD(n, lang) : fmtXOF(n, lang);
 const fmtDate = (d, lang) => new Date(d).toLocaleDateString(lang === 'fr' ? 'fr-CA' : 'en-CA', {
-  day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit',
+  day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
 });
 
 const StatusBadge = ({ status, lang }) => {
@@ -163,7 +169,7 @@ const AdminDashboard = ({ onLangChange }) => {
     document.title = lang === 'fr'
       ? "Admin Dashboard | Prestige Money Transfer"
       : "Admin Dashboard | Prestige Money Transfer";
-  }, [lang]); // Se déclenche au chargement et si la langue change
+  }, [lang]);
 
   useEffect(() => {
     localStorage.setItem('prestige_lang', lang);
@@ -171,13 +177,6 @@ const AdminDashboard = ({ onLangChange }) => {
   }, [lang, onLangChange]);
 
   const { token } = useAuth();
-
-  // État de la langue par défaut (détecte la langue du navigateur ou FR)
-  /*const [lang, setLang] = useState(() => {
-    const saved = localStorage.getItem('admin_lang');
-    if (saved) return saved;
-    return navigator.language?.startsWith('en') ? 'en' : 'fr';
-  });*/
 
   const [transfers, setTransfers] = useState([]);
   const [filteredTransfers, setFilteredTransfers] = useState([]);
@@ -195,7 +194,12 @@ const AdminDashboard = ({ onLangChange }) => {
   const [proofModal, setProofModal] = useState(null);
   const [proofLoading, setProofLoading] = useState(false);
 
-  // Raccourci pour récupérer les chaînes de texte traduites
+  /* États liés à la liste des utilisateurs */
+  const [usersModalOpen, setUsersModalOpen] = useState(false);
+  const [usersList, setUsersList] = useState([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [userSearchQuery, setUserSearchQuery] = useState('');
+
   const t = TRANSLATIONS[lang];
 
   const toggleLanguage = () => {
@@ -205,8 +209,8 @@ const AdminDashboard = ({ onLangChange }) => {
   };
 
   const authHeader = useCallback(() => {
-    const t = token || sessionStorage.getItem('token');
-    return { Authorization: `Bearer ${t}` };
+    const tkn = token || sessionStorage.getItem('token');
+    return { Authorization: `Bearer ${tkn}` };
   }, [token]);
 
   const fetchData = useCallback(async (silent = false) => {
@@ -254,6 +258,29 @@ const AdminDashboard = ({ onLangChange }) => {
     }
     setFilteredTransfers(f);
   }, [transfers, statusFilter, corridorFilter, searchQuery]);
+
+  // Récupérer la liste complète des utilisateurs
+  const fetchUsers = async () => {
+    setUsersLoading(true);
+    setUsersModalOpen(true);
+    try {
+      const { data } = await axios.get(`${API_URL}/api/admin/users`, { headers: authHeader() });
+      setUsersList(data);
+    } catch (err) {
+      toast.error(lang === 'fr' ? "Impossible de charger les utilisateurs" : "Failed to load users");
+    } finally {
+      setUsersLoading(false);
+    }
+  };
+
+  const filteredUsers = usersList.filter((u) => {
+    const q = userSearchQuery.toLowerCase();
+    return (
+      u.full_name?.toLowerCase().includes(q) ||
+      u.email?.toLowerCase().includes(q) ||
+      u.phone?.toLowerCase().includes(q)
+    );
+  });
 
   const openEdit = (trans) => {
     setEditingTransfer(trans);
@@ -337,7 +364,6 @@ const AdminDashboard = ({ onLangChange }) => {
             <p className="text-white mt-1">{t.dashboardSubtitle}</p>
           </div>
           <div className="flex items-center gap-2">
-            {/* Bouton de basculement de langue */}
             <button
               onClick={toggleLanguage}
               className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-white/10 text-[#A1A1AA] hover:text-white hover:border-white/20 transition-all font-medium text-xs bg-[#1A1A1A]"
@@ -362,24 +388,26 @@ const AdminDashboard = ({ onLangChange }) => {
         {stats && (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
             {[
-              { label: t.statsTotal, value: stats.total_transfers, Icon: TrendingUp, color: 'text-[#D4AF37]', bg: 'bg-[#D4AF37]/10' },
-              { label: t.statsPending, value: stats.by_status?.pending || 0, Icon: Clock, color: 'text-amber-400', bg: 'bg-amber-400/10' },
-              { label: t.statsUsers, value: stats.total_users, Icon: Users, color: 'text-blue-400', bg: 'bg-blue-400/10' },
-              { label: t.statsCompleted, value: stats.by_status?.completed || 0, Icon: CheckCircle, color: 'text-green-400', bg: 'bg-green-400/10' },
-            ].map(({ label, value, Icon, color, bg }) => (
+              { label: t.statsTotal, value: stats.total_transfers, Icon: TrendingUp, color: 'text-[#D4AF37]', bg: 'bg-[#D4AF37]/10', clickable: false },
+              { label: t.statsPending, value: stats.by_status?.pending || 0, Icon: Clock, color: 'text-amber-400', bg: 'bg-amber-400/10', clickable: false },
+              { label: t.statsUsers, value: stats.total_users, Icon: Users, color: 'text-blue-400', bg: 'bg-blue-400/10', clickable: true, onClick: fetchUsers },
+              { label: t.statsCompleted, value: stats.by_status?.completed || 0, Icon: CheckCircle, color: 'text-green-400', bg: 'bg-green-400/10', clickable: false },
+            ].map(({ label, value, Icon, color, bg, clickable, onClick }) => (
               <div
                 key={label}
-                className="
-    bg-zinc-900/90
-    backdrop-blur-sm
-    border border-yellow-500/20
-    rounded-2xl
-    p-6
-    shadow-lg
-    shadow-yellow-500/10
-    hover:border-yellow-500/40
-    transition-all
-  "
+                onClick={clickable ? onClick : undefined}
+                className={`
+                  bg-zinc-900/90
+                  backdrop-blur-sm
+                  border border-yellow-500/20
+                  rounded-2xl
+                  p-6
+                  shadow-lg
+                  shadow-yellow-500/10
+                  hover:border-yellow-500/40
+                  transition-all
+                  ${clickable ? 'cursor-pointer hover:scale-[1.02] active:scale-[0.98]' : ''}
+                `}
               >
                 <div className={`w-9 h-9 rounded-xl ${bg} flex items-center justify-center mb-3`}>
                   <Icon className={`w-4 h-4 ${color}`} />
@@ -484,8 +512,6 @@ const AdminDashboard = ({ onLangChange }) => {
                 return (
                   <div key={tItem.id} className="px-6 py-4 hover:bg-white/[0.02] transition-colors" data-testid={`admin-transfer-${tItem.id}`}>
                     <div className="flex flex-col lg:flex-row lg:items-center gap-4">
-
-                      {/* Infos */}
                       <div className="flex-1 grid grid-cols-2 md:grid-cols-4 gap-4">
                         <div>
                           <p className="text-white text-sm font-medium">
@@ -516,7 +542,6 @@ const AdminDashboard = ({ onLangChange }) => {
                         </div>
                       </div>
 
-                      {/* Statut + actions */}
                       <div className="flex flex-wrap items-center gap-2 shrink-0">
                         <StatusBadge status={tItem.status} lang={lang} />
 
@@ -566,6 +591,62 @@ const AdminDashboard = ({ onLangChange }) => {
           )}
         </div>
       </main>
+
+      {/* ══ Dialog : Liste des utilisateurs ══ */}
+      <Dialog open={usersModalOpen} onOpenChange={setUsersModalOpen}>
+        <DialogContent className="bg-[#0F0F0F] border-white/10 text-white max-w-2xl max-h-[85vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="text-white flex items-center gap-2 text-xl">
+              <Users className="w-5 h-5 text-[#D4AF37]" />
+              {t.usersListTitle}
+            </DialogTitle>
+            <div className="relative mt-3">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#A1A1AA]" />
+              <Input
+                placeholder={t.searchUserPlaceholder}
+                value={userSearchQuery}
+                onChange={(e) => setUserSearchQuery(e.target.value)}
+                className="pl-9 bg-[#1A1A1A] border-white/10 text-white focus:border-[#D4AF37]"
+              />
+            </div>
+          </DialogHeader>
+
+          <div className="flex-1 overflow-y-auto pr-1 my-4 space-y-2 min-h-[300px]">
+            {usersLoading ? (
+              <div className="flex flex-col items-center justify-center pt-12 gap-2">
+                <Loader2 className="w-8 h-8 text-[#D4AF37] animate-spin" />
+              </div>
+            ) : filteredUsers.length === 0 ? (
+              <p className="text-center text-[#A1A1AA] text-sm pt-12">{t.noUsersFound}</p>
+            ) : (
+              filteredUsers.map((u) => (
+                <div key={u.id} className="p-4 rounded-xl bg-white/5 border border-white/5 flex flex-col md:flex-row md:items-center justify-between gap-3 hover:bg-white/[0.08] transition-colors">
+                  <div className="space-y-1">
+                    <p className="text-white font-medium text-sm flex items-center gap-2">
+                      {u.full_name}
+                      {u.is_admin && <span className="text-[10px] bg-[#D4AF37]/20 text-[#D4AF37] px-2 py-0.5 rounded-full font-normal">Admin</span>}
+                    </p>
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-[#A1A1AA]">
+                      <span className="flex items-center gap-1"><Mail className="w-3 h-3" /> {u.email}</span>
+                      <span className="flex items-center gap-1"><Phone className="w-3 h-3" /> {u.phone || '—'}</span>
+                    </div>
+                  </div>
+                  <div className="flex flex-row md:flex-col items-end justify-between md:justify-center text-right text-xs text-[#71717A] gap-1 shrink-0 pt-2 md:pt-0 border-t border-white/5 md:border-0">
+                    <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {u.country || '—'}</span>
+                    <span>{t.userJoined} {u.created_at ? new Date(u.created_at).toLocaleDateString(lang === 'fr' ? 'fr-CA' : 'en-CA') : '—'}</span>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setUsersModalOpen(false)} className="border-white/10 text-white hover:bg-white/5 w-full md:w-auto">
+              {t.cancel}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* ══ Dialog : éditer un transfert ══ */}
       <Dialog open={!!editingTransfer} onOpenChange={() => setEditingTransfer(null)}>
