@@ -73,3 +73,8 @@ This section has moved here: [https://facebook.github.io/create-react-app/docs/t
 
 
 To create a new admin account : curl -X POST https://https://prestige-money-transfer-api-onrender-com.onrender.com/api/admin/create-admin
+
+
+PS C:\dev\prestige-horizon-transfer> curl -X POST https://prestige-money-transfer-api-onrender-com.onrender.com/api/admin/create-admin        
+{"message":"Admin créé","email":"admin@prestigemoneytransfer.ca","password":"PrestigeAdmin2024!"}
+PS C:\dev\prestige-horizon-transfer> 
