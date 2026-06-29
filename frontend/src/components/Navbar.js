@@ -118,7 +118,7 @@ export const Navbar = ({ lang = 'fr', setLang }) => {
                 <Button
                   variant="ghost"
                   onClick={handleLanguageToggle}
-                  className="flex items-center gap-2 text-[#A1A1AA] hover:text-white hover:bg-white/5 font-medium px-3 text-sm transition-all"
+                  className="flex items-center gap-2 text-white hover:text-yellow-500 hover:bg-white/5 font-medium px-3 text-sm transition-all"
                 >
                   <Globe className="w-4 h-4 text-[#D4AF37]" />
                   <span>{t.toggleLang}</span>
