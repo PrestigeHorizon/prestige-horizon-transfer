@@ -57,12 +57,23 @@ db.users.insertOne({
     created_at: new Date().toISOString()
 })
 
-# En cas de perte de tous tes comptes admin et que tu as encore accès à l'API, le plus simple est d'appeler :
-POST /api/admin/create-admin
-curl -X POST https://prestige-money-transfer-api-onrender-com.onrender.com/api/admin/create-admin
-Cela recréera automatiquement --------- Email : admin@prestigemoneytransfer.ca Mot de passe : PrestigeAdmin2024!
+### ------------------------------------------------------------------------------------------------------------------------- ###
 
-# --------------------------------------------------------------------------------------------------------------------------------------------------
+To start venv (project root folder)
+# .venv\Scripts\Activate
+
+To start server (in backend folder)
+# uvicorn server:app --reload
+
+To Launch user interface (In frontend folder)
+# npm start
+
+En cas de perte de tous tes comptes admin et que tu as encore accès à l'API, le plus simple est d'appeler :
+# POST /api/admin/create-admin
+# curl -X POST https://prestige-money-transfer-api-onrender-com.onrender.com/api/admin/create-admin
+Cela recréera automatiquement --------- Email : admin@prestigemoneytransfer.ca Mot de passe : PrestigeAdmin2024!
+### ------------------------------------------------------------------------------------------------------------------------- ###
+
 Troubleshooting "Scripts are Disabled"
 If you get an error saying "running scripts is disabled on this system," Windows is blocking the activation script for security. You can fix this for your current session by running:
 
@@ -88,7 +99,6 @@ Command Prompt (cmd): .venv\Scripts\activate.bat
 Git Bash / Linux / macOS: source .venv/bin/activate
 
 Quick Access
-Admin Login: admin@prestigehorizon.com / admin123
 Users: Can register and start sending transfers immediately
 
 To create admin user : curl -X POST http://localhost:8001/api/admin/create-admin
