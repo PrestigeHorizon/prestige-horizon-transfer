@@ -31,6 +31,23 @@ See the section about [deployment](https://facebook.github.io/create-react-app/d
 
 ### `npm run eject`
 
+### ------------------------------------------------------------------------------------------------------------------------- ###
+
+To load venv
+### .venv\Scripts\Activate
+
+To start backend
+### uvicorn server:app --reload
+
+To launch the frontend
+### npm start
+
+To create a new admin account : 
+### curl -X POST https://prestige-money-transfer-api-onrender-com.onrender.com/api/admin/create-admin       
+{"message":"Admin créé","email":"admin@prestigemoneytransfer.ca","password":"PrestigeAdmin2024!"}
+
+### --------------------------------------------------------------------------------------------------------------------- ###
+
 **Note: this is a one-way operation. Once you `eject`, you can't go back!**
 
 If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
@@ -68,13 +85,3 @@ This section has moved here: [https://facebook.github.io/create-react-app/docs/d
 ### `npm run build` fails to minify
 
 This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
-
-
-
-
-To create a new admin account : curl -X POST https://https://prestige-money-transfer-api-onrender-com.onrender.com/api/admin/create-admin
-
-
-PS C:\dev\prestige-horizon-transfer> curl -X POST https://prestige-money-transfer-api-onrender-com.onrender.com/api/admin/create-admin        
-{"message":"Admin créé","email":"admin@prestigemoneytransfer.ca","password":"PrestigeAdmin2024!"}
-PS C:\dev\prestige-horizon-transfer> 

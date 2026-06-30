@@ -366,7 +366,6 @@ export const NewTransfer = ({ onLangChange, initialTransfer = null }) => {
 
         {/* ─────────────── STEP 1 ─────────────── */}
         {step === 1 && (
-          /* ... Pas de changement sur le Step 1 ... */
           <div className="space-y-8 animate-fade-in">
             <div className="space-y-3">
               <Label className="text-[#A1A1AA] uppercase text-xs tracking-wider">{t.direction}</Label>
@@ -484,7 +483,6 @@ export const NewTransfer = ({ onLangChange, initialTransfer = null }) => {
 
         {/* ─────────────── STEP 2 ─────────────── */}
         {step === 2 && (
-          /* ... Pas de changement sur le Step 2 ... */
           <div className="space-y-6 animate-fade-in" data-testid="step-2">
             <div className="space-y-3">
               <Label className="text-[#A1A1AA] uppercase text-xs tracking-wider">{t.deliveryMethod}</Label>
@@ -596,7 +594,6 @@ export const NewTransfer = ({ onLangChange, initialTransfer = null }) => {
 
         {/* ─────────────── STEP 3 ─────────────── */}
         {step === 3 && (
-          /* ... Pas de changement sur le Step 3 ... */
           <div className="space-y-5 animate-fade-in">
             <Card className="bg-[#0F0F0F] border-white/10">
               <CardHeader className="pb-2">

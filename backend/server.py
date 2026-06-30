@@ -45,7 +45,7 @@ app.add_middleware(
 # DB & AUTH
 # ============================================================
 
-# Connexion propre à MongoDB Atlas
+# Connexion à MongoDB Atlas
 mongo_url = os.environ['MONGO_URL']
 client    = AsyncIOMotorClient(mongo_url)
 
@@ -690,7 +690,6 @@ async def create_transfer(transfer: TransferCreate, user: dict = Depends(get_cur
 
     return enrich_transfer(doc)
 
-    # On n'oublie pas d'inclure le routeur dans l'application FastAPI
     app.include_router(api_router)
 
     # Email de confirmation (non bloquant)

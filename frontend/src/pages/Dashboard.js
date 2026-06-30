@@ -132,7 +132,7 @@ const Dashboard = ({ onLangChange }) => {
       setTransfers(data);
     } catch (e) {
       console.error(e);
-    } finally { // <── Corrigé ici (était écrit "file {")
+    } finally {
       setLoading(false);
       setRefreshing(false);
     }
