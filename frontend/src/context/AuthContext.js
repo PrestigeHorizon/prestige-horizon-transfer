@@ -68,6 +68,7 @@ export const AuthProvider = ({ children }) => {
 
   const logout = () => {
     sessionStorage.removeItem('token');
+    sessionStorage.removeItem("refresh_token");
     setToken(null);
     setUser(null);
     window.location.href = '/';
