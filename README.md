@@ -72,6 +72,7 @@ En cas de perte de tous tes comptes admin et que tu as encore accès à l'API, l
 # POST /api/admin/create-admin
 # curl -X POST https://prestige-money-transfer-api-onrender-com.onrender.com/api/admin/create-admin
 Cela recréera automatiquement --------- Email : admin@prestigemoneytransfer.ca Mot de passe : PrestigeAdmin2024!
+
 ### ------------------------------------------------------------------------------------------------------------------------- ###
 
 Troubleshooting "Scripts are Disabled"

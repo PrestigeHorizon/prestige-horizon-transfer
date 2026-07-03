@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { Link } from "react-router-dom";
+import React, { useState, useEffect, useCallback} from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { Navbar } from '@/components/Navbar';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
 import {
   ArrowRight,
@@ -239,7 +240,10 @@ const LiveCalculator = ({ lang, t }) => {
 /* ── Composant principal de la page d'accueil ── */
 const Landing = ({ onLangChange }) => {
 
+  const navigate = useNavigate();
+
   const [lang, setLang] = useState(() => localStorage.getItem('prestige_lang') || 'fr');
+  const { user, loading } = useAuth();
 
   useEffect(() => {
     document.title = lang === 'fr'
@@ -251,7 +255,17 @@ const Landing = ({ onLangChange }) => {
     localStorage.setItem('prestige_lang', lang);
     if (onLangChange) onLangChange(lang);
   }, [lang, onLangChange]);
-  
+
+  useEffect(() => {
+    if (!loading && user) {
+      if (user.is_admin) {
+        navigate('/admin', { replace: true });
+      } else {
+        navigate('/dashboard', { replace: true });
+      }
+    }
+  }, [user, loading, navigate]);
+
   const t = translations[lang];
 
   const featureIcons = [Clock, Shield, Smartphone, Building2];
@@ -260,7 +274,7 @@ const Landing = ({ onLangChange }) => {
     <div className="bg-black text-white min-h-screen">
       <Navbar lang={lang} setLang={setLang} />
 
-      {/* HERO SECTION ─ Modifiée ici pour le mobile (pt-24) */}
+      {/* HERO SECTION */}
       <section className="relative overflow-hidden pt-24 md:pt-20">
         <div className="absolute inset-0 bg-gradient-to-r from-yellow-500/10 to-transparent"></div>
         <div className="relative max-w-7xl mx-auto px-6 py-12 md:py-20">

@@ -42,7 +42,7 @@ const ProtectedRoute = ({ children, adminOnly = false }) => {
   return children;
 };*/
 
-/* ── Route publique (redirige si déjà connecté) ── */
+/* ── Route publique (redirige si déjà connecté) ── 
 const PublicRoute = ({ children }) => {
   const { user, loading, logout } = useAuth();
 
@@ -57,6 +57,26 @@ const PublicRoute = ({ children }) => {
   // on ne redirige PAS vers le dashboard, on laisse le useEffect faire le logout.
   if (user && location.pathname !== "/") {
     return <Navigate to={user.is_admin ? "/admin" : "/dashboard"} replace />;
+  }
+
+  return children;
+};*/
+
+
+const PublicRoute = ({ children }) => {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return <FullPageLoader />;
+  }
+
+  if (user) {
+    return (
+      <Navigate
+        to={user.is_admin ? "/admin" : "/dashboard"}
+        replace
+      />
+    );
   }
 
   return children;
