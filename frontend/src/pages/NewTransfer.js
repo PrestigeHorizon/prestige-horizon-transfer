@@ -723,15 +723,13 @@ export const NewTransfer = ({ onLangChange, initialTransfer = null }) => {
                   <>
                     <p className="text-[#A1A1AA] text-sm">{t.uploadInstructions}</p>
 
-                    <div
-                      onClick={(e) => {
-                        e.preventDefault();
-                        fileRef.current?.click();
-                      }}
-                      className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${proofFile ? 'border-[#D4AF37]/50 bg-[#D4AF37]/5' : 'border-white/10 hover:border-[#D4AF37]/30 hover:bg-white/5'
+                    <label
+                      htmlFor="proof-file-input"
+                      className={`block border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${proofFile ? 'border-[#D4AF37]/50 bg-[#D4AF37]/5' : 'border-white/10 hover:border-[#D4AF37]/30 hover:bg-white/5'
                         }`}
                     >
                       <input
+                        id="proof-file-input"
                         ref={fileRef}
                         type="file"
                         accept="image/jpeg,image/png,image/webp,application/pdf"
@@ -751,7 +749,7 @@ export const NewTransfer = ({ onLangChange, initialTransfer = null }) => {
                           <p className="text-[#555] text-xs">JPG, PNG, WebP, PDF · Max 5 Mo</p>
                         </div>
                       )}
-                    </div>
+                    </label>
 
                     <Button
                       onClick={handleProofUpload}

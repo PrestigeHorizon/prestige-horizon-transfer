@@ -155,6 +155,7 @@ const TransferDetails = () => {
     }
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { fetchTransfer(); }, [id]);
 
   const handleProofUpload = async () => {
@@ -292,14 +293,20 @@ const TransferDetails = () => {
                   <p className="text-[#A1A1AA] text-sm">
                     Une fois le paiement effectué, envoyez votre capture d&apos;écran ou reçu (JPG, PNG, PDF — max 5 Mo).
                   </p>
-                  <div
-                    onClick={() => fileRef.current?.click()}
-                    className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${
+                  <label
+                    htmlFor="transfer-details-proof-input"
+                    className={`block border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${
                       proofFile ? 'border-[#D4AF37]/50 bg-[#D4AF37]/5' : 'border-white/10 hover:border-[#D4AF37]/30 hover:bg-white/5'
                     }`}
                   >
-                    <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,application/pdf"
-                      className="hidden" onChange={(e) => setProofFile(e.target.files?.[0] || null)} />
+                    <input
+                      id="transfer-details-proof-input"
+                      ref={fileRef}
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,application/pdf"
+                      className="hidden"
+                      onChange={(e) => setProofFile(e.target.files?.[0] || null)}
+                    />
                     {proofFile ? (
                       <div className="space-y-1">
                         <Smartphone className="w-8 h-8 text-[#D4AF37] mx-auto" />
@@ -313,7 +320,7 @@ const TransferDetails = () => {
                         <p className="text-[#555] text-xs">JPG, PNG, WebP, PDF · Max 5 Mo</p>
                       </div>
                     )}
-                  </div>
+                  </label>
                   <Button onClick={handleProofUpload} disabled={!proofFile || proofUploading}
                     className="w-full bg-[#D4AF37] text-black hover:bg-[#B59326] font-semibold">
                     {proofUploading
